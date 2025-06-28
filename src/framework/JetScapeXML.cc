@@ -56,7 +56,7 @@ void JetScapeXML::OpenXMLMainFile() {
       }
     } else { //Check for an old default Master file
 	  auto errCode = xml_doc_main.ErrorID(); //Save the original error code
-      SetXMLMainFileName("../config/jetscape_master.xml"); //Try old default Master XML file
+      SetXMLMainFileName("./jetscape_main.xml"); //Try old default Master XML file
       xml_doc_main.LoadFile((char *)GetXMLMainFileName().c_str());
       VERBOSE(2) << "Looking for Old XML Master file : " << GetXMLMainFileName();
 

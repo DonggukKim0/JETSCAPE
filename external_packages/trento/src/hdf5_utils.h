@@ -7,6 +7,8 @@
 #define HDF5_UTILS_H
 
 #include <string>
+#include <vector>
+#include <algorithm>
 
 #ifdef TRENTO_HDF5
 #include <H5Cpp.h>

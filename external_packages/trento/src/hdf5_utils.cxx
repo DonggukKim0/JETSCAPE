@@ -17,8 +17,8 @@ bool filename_is_hdf5(const fs::path& path) {
   if (!path.has_extension())
     return false;
 
-  auto hdf5_exts = {".hdf5", ".hdf", ".hd5", ".h5"};
-  auto result = std::find(hdf5_exts.begin(), hdf5_exts.end(), path.extension());
+  const std::vector<std::string> hdf5_exts = {".hdf5", ".hdf", ".hd5", ".h5"};
+  auto result = std::find(hdf5_exts.begin(), hdf5_exts.end(), path.extension().string());
 
   return result != hdf5_exts.end();
 }

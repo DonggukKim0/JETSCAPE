@@ -11,20 +11,20 @@
 
 using namespace std;
 
-HydroinfoH5::HydroinfoH5() {
-   readinFlag = 0;
-   outputFlag = 0;
-}
+HydroinfoH5::HydroinfoH5()
+    : readinFlag(0), outputFlag(0) {}
 
 HydroinfoH5::HydroinfoH5(string filename_in,
-                         int bufferSize_in, int Visflag_in) {
+                         int bufferSize_in, int Visflag_in)
+    : readinFlag(0), outputFlag(0) {
    readHydroinfoH5(filename_in, bufferSize_in, Visflag_in);
 }
 
 HydroinfoH5::HydroinfoH5(int XL_in, int XH_in, double DX_in, int LSX_in,
                          int YL_in, int YH_in, double DY_in, int LSY_in,
                          double Tau0_in, double dTau_in, double LST_in,
-                         int Visflag_in, string filename_in) {
+                         int Visflag_in, string filename_in)
+    : readinFlag(0), outputFlag(0) {
    setHydroFiles(XL_in, XH_in, DX_in, LSX_in, YL_in, YH_in, DY_in, LSY_in,
                  Tau0_in, dTau_in, LST_in, Visflag_in, filename_in);
 }

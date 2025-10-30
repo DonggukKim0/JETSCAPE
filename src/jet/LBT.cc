@@ -23,6 +23,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 #include "FluidDynamics.h"
 #include "LBTMutex.h"
@@ -987,12 +988,16 @@ void LBT::LBT0(int &n, double &ti) {
           }
 
           if (tempLoc >= hydro_Tc) {
-            vMag = sqrt(vxLoc * vxLoc + vyLoc * vyLoc + vzLoc * vzLoc);
-            flowFactor =
-                (1.0 -
-                 (pc0[1] * vxLoc + pc0[2] * vyLoc + pc0[3] * vzLoc) / pc0[0]) /
-                sqrt(1.0 - vMag * vMag);
-            Tint_lrf[i] = Tint_lrf[i] + dtLoc * flowFactor;
+            double vMag2 = vxLoc * vxLoc + vyLoc * vyLoc + vzLoc * vzLoc;
+            if (std::isfinite(vMag2) && vMag2 < 1.0) {
+              double gamma = 1.0 / sqrt(1.0 - vMag2);
+              double dot =
+                  (pc0[1] * vxLoc + pc0[2] * vyLoc + pc0[3] * vzLoc) / pc0[0];
+              flowFactor = (1.0 - dot) * gamma;
+              Tint_lrf[i] = Tint_lrf[i] + dtLoc * flowFactor;
+            } else {
+              // skip unphysical cell to avoid NaN propagation
+            }
           }
         }
 
@@ -3833,6 +3838,21 @@ double LBT::nHQgluon(int parID, double dtLRF, double &time_gluon,
   double rate_T1E1, rate_T1E2, rate_T2E1, rate_T2E2, max_T1E1, max_T1E2,
       max_T2E1, max_T2E2;
 
+  // Defensive checks to avoid NaNs and out-of-range indices
+  if (!std::isfinite(time_gluon) || time_gluon < 0.0) {
+    time_gluon = 0.0;
+    max_Ng = 0.0;
+    return 0.0;
+  }
+  if (!std::isfinite(temp_med)) {
+    max_Ng = 0.0;
+    return 0.0;
+  }
+  if (!std::isfinite(HQenergy) || HQenergy < 0.0) {
+    max_Ng = 0.0;
+    return 0.0;
+  }
+
   if (time_gluon > t_max) {
     cout << "accumulated time exceeds t_max" << endl;
     cout << time_gluon << "    " << temp_med << "    " << HQenergy << endl;
@@ -3862,10 +3882,14 @@ double LBT::nHQgluon(int parID, double dtLRF, double &time_gluon,
   } else {
       time_num = (int)((time_gluon - t_max_1) / delta_tg_2 + 0.5) + t_gn_1 + 1;
   }
+  if (time_num < 1) time_num = 1;
+  if (time_num > t_gn) time_num = t_gn; // ensure time_num+1 <= t_gn+1
   //  temp_num=(int)((temp_med-temp_min)/delta_temp+0.5);
   //  HQenergy_num=(int)(HQenergy/delta_HQener+0.5); // use linear interpolation instead of finding nearest point for E and T dimensions
   temp_num = (int)((temp_med - temp_min) / delta_temp);
   HQenergy_num = (int)(HQenergy / delta_HQener); // normal interpolation
+  if (temp_num < 0) temp_num = 0;
+  if (HQenergy_num < 0) HQenergy_num = 0;
   if (HQenergy_num >= HQener_gn)
     HQenergy_num = HQener_gn - 1; // automatically become extrapolation
   if (temp_num >= temp_gn)

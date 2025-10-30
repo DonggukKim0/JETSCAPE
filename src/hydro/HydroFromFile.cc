@@ -167,7 +167,7 @@ void HydroFromFile::EvolveHydro() {
       filename = hydro_filename.str();
     }
 #ifdef USE_HDF5
-    read_in_hydro_event(filename, 500, load_viscous_);
+    read_in_hydro_event(filename, 1000, load_viscous_);
     hydro_tau_0 = hydroinfo_h5_ptr->getHydrogridTau0();
     hydro_tau_max = hydroinfo_h5_ptr->getHydrogridTaumax();
 #endif

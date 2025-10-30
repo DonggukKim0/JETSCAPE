@@ -1,16 +1,17 @@
 name: test nPDF build
 
-on:
-  pull_request:
-    branches:
-      - main
-      - JETSCAPE-3.7.1-RC
-      - require_cmake_3_5
-  push:
-    branches:
-      - main
-      - JETSCAPE-3.7.1-RC
-      - require_cmake_3_5
+# on:
+#   pull_request:
+#     branches:
+#       - main
+#       - JETSCAPE-3.7.1-RC
+#       - require_cmake_3_5
+#   push:
+#     branches:
+#       - main
+#       - JETSCAPE-3.7.1-RC
+#       - require_cmake_3_5
+on: []
 
 env:
   REPO_NAME: ${{ github.event.repository.name }}

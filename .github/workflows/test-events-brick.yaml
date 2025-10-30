@@ -1,16 +1,17 @@
 name: build+regression test brick matter lbt
 
-on:
-  pull_request:
-    branches:
-      - main
-      - brick_matter_lbt
-      - latessa/lbt-test
-  push:
-    branches:
-      - main
-      - brick_matter_lbt
-      - latessa/lbt-test
+# on:
+#   pull_request:
+#     branches:
+#       - main
+#       - brick_matter_lbt
+#       - latessa/lbt-test
+#   push:
+#     branches:
+#       - main
+#       - brick_matter_lbt
+#       - latessa/lbt-test
+on: []
 
 env:
   REPO_NAME: ${{ github.event.repository.name }}

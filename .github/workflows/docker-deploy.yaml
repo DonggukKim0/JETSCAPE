@@ -1,9 +1,10 @@
 name: docker-build
 
-on:
-  push:
-    branches:
-      - latessa/dockerImage
+# on:
+#   push:
+#     branches:
+#       - latessa/dockerImage
+on: []
 
 env:
   REPO_NAME: ${{ github.event.repository.name }}
@@ -28,4 +29,3 @@ jobs:
           file: ./docker/Dockerfile.base
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/base:stable
-

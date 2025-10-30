@@ -1,10 +1,11 @@
 name: plot observables
 
-on:
-  push:
-    branches:
-      - main
-      - latessa/dockerImage
+# on:
+#   push:
+#     branches:
+#       - main
+#       - latessa/dockerImage
+on: []
 
 env:
   PULL_NUMBER: ${{ github.event.number }}

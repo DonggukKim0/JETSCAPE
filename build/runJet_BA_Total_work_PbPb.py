@@ -8,9 +8,9 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_PbPb_default"
-wantDir = "config_files_PbPb_5020GeV_cent_0_5_default"
-TOTAL_EVENTS = 1
+MAINGENERATOR = "run_config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_40_50_bins_2"
+wantDir = "config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_40_50_bins_2"
+TOTAL_EVENTS = 100
 
 
 def gather_configurations(main_dir: str) -> list[pathlib.Path]:
@@ -121,6 +121,64 @@ fi
 
 CONFIG_PATH=\"${{CONFIG_FILES[$CONFIG_INDEX]}}\"
 echo \"Running configuration: $CONFIG_PATH (event $EVENT_INDEX)\"
+
+if ! RANDOM_SEED=$(python3 - <<'PY' "$CONFIG_PATH"
+import pathlib
+import random
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path = pathlib.Path(sys.argv[1])
+rng = random.SystemRandom()
+# Pythia8 accepts seeds in the range [1, 900000000]; keep values within bounds.
+seed_value = rng.randrange(1, 900000001)
+seed_text = str(seed_value)
+
+try:
+    original_text = path.read_text()
+except Exception as exc:
+    sys.stderr.write("Failed to read " + str(path) + ": " + str(exc) + "\\n")
+    sys.exit(1)
+
+seed_pattern = re.compile(r"(<\s*seed\s*>\s*)(-?\d+)(\s*<\s*/\s*seed\s*>)", re.IGNORECASE)
+if seed_pattern.search(original_text):
+    updated_text = seed_pattern.sub(lambda m: m.group(1) + seed_text + m.group(3), original_text, count=1)
+    try:
+        path.write_text(updated_text)
+    except Exception as exc:
+        sys.stderr.write("Failed to write " + str(path) + ": " + str(exc) + "\\n")
+        sys.exit(1)
+    print(seed_value)
+    sys.exit(0)
+
+try:
+    tree = ET.ElementTree(file=path)
+except Exception as exc:
+    sys.stderr.write("Failed to parse " + str(path) + " when attempting to add seed: " + str(exc) + "\\n")
+    sys.exit(1)
+
+root = tree.getroot()
+random_node = root.find('.//Random')
+if random_node is None:
+    random_node = ET.SubElement(root, 'Random')
+
+seed_node = random_node.find('seed')
+if seed_node is None:
+    seed_node = ET.SubElement(random_node, 'seed')
+seed_node.text = seed_text
+
+tree.write(path, encoding='unicode')
+print(seed_value)
+PY
+); then
+  echo \"Failed to randomize seed for $CONFIG_PATH\" >&2
+  exit 1
+fi
+
+if [[ -n \"$RANDOM_SEED\" ]]; then
+  echo \"Random seed set to $RANDOM_SEED\"
+fi
 
 OUTPUT_PREFIX=$(python3 - <<'PY' "$CONFIG_PATH"
 import sys
@@ -340,7 +398,7 @@ Output                  = {work_dir}/{config_dir}_$(EventIndex).out
 Error                   = {work_dir}/{config_dir}_$(EventIndex).error
 request_cpus            = 1
 request_memory          = 16GB
-request_disk            = 1GB
+request_disk            = 4GB
 # Transfer required executables and lightweight resources
 transfer_input_files    = {transfer_inputs}
 # Transfer .dat, .root (JTree), and final .root

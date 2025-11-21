@@ -13,34 +13,17 @@ from typing import List
 
 os.umask(0)
 
-MAINGENERATOR = "make_hydro_jetdata"
+MAINGENERATOR = "Gen_OO_JetData"
 wantDir = "hydro_files_OO"
+HYDRO_CONFIG_DIR = "hydro_files_OO_config"
+CONFIG_FILENAME = "jetscape_user_hydro_files.xml"
 TOTAL_EVENTS = 1
 
 RUN_EXECUTABLE = "./runJetscape"
-RUN_CONFIG = "jetscape_user_hydro_files.xml"
 TEMP_DIR_NAME = "temp"
 STAGED_EVENT_NAME = "event-0"
 OUTPUT_DIR_NAME = "out"
 music_output = "evolution_all_xyeta_MUSIC.dat"
-
-
-def gather_configurations(main_dir: str) -> list[Path]:
-    base_path = pathlib.Path(main_dir) / wantDir
-    if not base_path.exists():
-        raise FileNotFoundError(f"Configuration directory not found: {base_path}")
-
-    config_files = sorted(path for path in base_path.rglob("*.xml") if path.is_file())
-    if config_files:
-        return config_files
-
-    fallback = Path(main_dir) / RUN_CONFIG
-    if fallback.exists():
-        return [fallback]
-
-    raise RuntimeError(
-        f"No configuration XML files found under {base_path} and fallback {fallback} is missing"
-    )
 
 
 def extract_output_prefix(config_path: Path) -> str:
@@ -65,11 +48,15 @@ def extract_output_prefix(config_path: Path) -> str:
 
     
 def build_run_script(
-        run_script_path: Path, initial_rel_paths: list[str], output_dir_names: list[str]
+        run_script_path: Path,
+        initial_rel_paths: list[str],
+        output_dir_names: list[str],
+        config_rel_paths: list[str],
     ) -> None:
         total_jobs = len(initial_rel_paths)
         initial_lines = "\n".join(f'  "{rel}"' for rel in initial_rel_paths)
         output_lines = "\n".join(f'  "{name}"' for name in output_dir_names)
+        config_lines = "\n".join(f'  "{rel}"' for rel in config_rel_paths)
 
         script_contents = f"""#!/bin/bash
     echo "INIT! $1 $2 $3 $4 $5"
@@ -115,7 +102,10 @@ def build_run_script(
     {output_lines}
     )
 
-    CONFIG_PATH="{RUN_CONFIG}"
+    CONFIG_FILES=(
+    {config_lines}
+    )
+
     TOTAL_JOBS={total_jobs}
 
     INDEX_ARG="$2"
@@ -154,9 +144,33 @@ def build_run_script(
 
     INITIAL_PATH="${{INITIAL_FILES[$JOB_INDEX]}}"
     OUTPUT_LABEL="${{OUTPUT_LABELS[$JOB_INDEX]}}"
+    CONFIG_PATH="${{CONFIG_FILES[$JOB_INDEX]}}"
+
+    MUSIC_INPUT_PATH=$(python3 - <<'PY' "$CONFIG_PATH"
+import sys
+import xml.etree.ElementTree as ET
+
+path = sys.argv[1]
+try:
+    root = ET.parse(path).getroot()
+except Exception:
+    root = None
+value = None
+if root is not None:
+    text = root.findtext('.//MUSIC_input_file')
+    if text:
+        value = text.strip()
+print(value or "")
+PY
+    )
+    if [[ -z "$MUSIC_INPUT_PATH" ]]; then
+      MUSIC_INPUT_PATH="music_input"
+    fi
+
 
     echo "Selected initial file: $INITIAL_PATH"
     echo "Output label: $OUTPUT_LABEL"
+    echo "Config file: $CONFIG_PATH"
 
     TEMP_ROOT="{TEMP_DIR_NAME}"
     STAGED_DIR="$TEMP_ROOT/{STAGED_EVENT_NAME}"
@@ -220,8 +234,8 @@ def build_run_script(
     echo "Stored $OUTPUT_DIR/$MUSIC_OUTPUT"
 
     if [[ -x ./convert_to_h5 ]]; then
-      echo "Running convert_to_h5..."
-      if ./convert_to_h5; then
+      echo "Running convert_to_h5 with $MUSIC_INPUT_PATH ..."
+      if ./convert_to_h5 "$MUSIC_INPUT_PATH"; then
         if [[ -f JetData.h5 ]]; then
           mv -f JetData.h5 "$OUTPUT_DIR/JetData.h5"
           cp -f "$OUTPUT_DIR/JetData.h5" JetData.h5
@@ -327,7 +341,7 @@ request_cpus            = 1
 request_memory          = 16GB
 request_disk            = 500MB
 # Transfer all required executables and scripts
-transfer_input_files    = convert_to_h5,Pythia8,lib_hdf5,lib_boost,lib,src,{wantDir},nanoDict_rdict.pcm,jcorranDict_rdict.pcm,alienv_envset.sh,runJetscape,jetscape_main.xml,jetscape_user_hydro_files.xml,music_input,EOS,LBT-tables,run.sh
+transfer_input_files    = freestream_input,convert_to_h5,Pythia8,lib_hdf5,lib_boost,lib,src,{wantDir},{HYDRO_CONFIG_DIR},nanoDict_rdict.pcm,jcorranDict_rdict.pcm,alienv_envset.sh,runJetscape,jetscape_main.xml,EOS,LBT-tables,run.sh
 # Transfer MUSIC evolution output
 transfer_output_files   = evolution_all_xyeta_MUSIC.dat,JetData.h5
 transfer_output_remaps  = "evolution_all_xyeta_MUSIC.dat={work_dir}/out/$(ConfigDir)/evolution_all_xyeta_MUSIC.dat;JetData.h5={work_dir}/out/$(ConfigDir)/JetData.h5"
@@ -358,6 +372,13 @@ def gather_initial_files(base_path: Path) -> List[Path]:
     return files
 
 
+def config_path_for_centrality(base_path: Path, cent_name: str) -> Path:
+    config_path = base_path / HYDRO_CONFIG_DIR / cent_name / CONFIG_FILENAME
+    if not config_path.exists():
+        raise FileNotFoundError(f"Missing config for {cent_name}: {config_path}")
+    return config_path
+
+
 def stage_event_directory(temp_root: Path, source_event_dir: Path) -> Path:
     """Copy the source event directory into temp/event-0 for Jetscape usage."""
     if temp_root.exists():
@@ -383,9 +404,9 @@ def ensure_music_output_absent(base_path: Path) -> None:
         target.unlink()
 
 
-def run_jetscape_local(base_path: Path) -> None:
+def run_jetscape_local(base_path: Path, config_path: Path) -> None:
     """Execute Jetscape with the hydro configuration for the staged event."""
-    subprocess.run([RUN_EXECUTABLE, RUN_CONFIG], cwd=base_path, check=True)
+    subprocess.run([RUN_EXECUTABLE, str(config_path)], cwd=base_path, check=True)
 
 
 def store_music_output(base_path: Path, destination_dir: Path) -> Path:
@@ -427,10 +448,13 @@ def run_local_mode(main_path: Path) -> None:
         relative_initial = initial_file.relative_to(main_path)
         print(f"[{index}/{total}] Processing {relative_initial}")
 
+        config_path = config_path_for_centrality(main_path, cent_dir_name)
+        config_rel = config_path.relative_to(main_path)
+
         try:
             stage_event_directory(temp_root, event_dir)
             ensure_music_output_absent(main_path)
-            run_jetscape_local(main_path)
+            run_jetscape_local(main_path, config_rel)
             stored_path = store_music_output(main_path, destination_dir)
             print(f"    Stored {stored_path.relative_to(main_path)}")
         except subprocess.CalledProcessError as exc:
@@ -453,11 +477,14 @@ def run_condor_mode(main_path: Path) -> None:
 
     initial_rel = [path.relative_to(main_path).as_posix() for path in initial_files]
     output_dir_names: list[str] = []
+    config_rel: list[str] = []
     for initial_file in initial_files:
         event_dir = initial_file.parent
         cent_dir_name = event_dir.parent.name
         event_dir_name = event_dir.name
         output_dir_names.append(build_local_output_dir_name(cent_dir_name, event_dir_name))
+        config_path = config_path_for_centrality(main_path, cent_dir_name)
+        config_rel.append(config_path.relative_to(main_path).as_posix())
 
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     work_dir = f"{now}_{MAINGENERATOR}"
@@ -469,7 +496,7 @@ def run_condor_mode(main_path: Path) -> None:
         (work_dir_path / "out" / out_dir).mkdir(parents=True, exist_ok=True)
 
     run_sh_path = work_dir_path / "macro" / "run.sh"
-    build_run_script(run_sh_path, initial_rel, output_dir_names)
+    build_run_script(run_sh_path, initial_rel, output_dir_names, config_rel)
 
     submit_paths: list[Path] = []
     for job_index, out_dir in enumerate(output_dir_names):

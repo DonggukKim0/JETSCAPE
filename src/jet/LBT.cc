@@ -24,6 +24,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <limits>
 
 #include "FluidDynamics.h"
 #include "LBTMutex.h"
@@ -31,6 +32,48 @@
 
 using namespace Jetscape;
 using namespace std;
+
+namespace {
+
+void LogMediumCell(const char *module, double tau,
+                   const FluidCellInfo *cell_info) {
+  if (!cell_info) {
+    return;
+  }
+  if (JetScapeLogger::Instance()->GetVerboseLevel() < 5) {
+    return;
+  }
+  JSINFO << MAGENTA << "[" << module << " Medium] tau=" << tau
+         << " T=" << cell_info->temperature
+         << " e=" << cell_info->energy_density
+         << " s=" << cell_info->entropy_density
+         << " vx=" << cell_info->vx << " vy=" << cell_info->vy
+         << " vz=" << cell_info->vz;
+}
+
+void LogPartonState(const char *module, double tau,
+                    double x, double y, double z) {
+  if (JetScapeLogger::Instance()->GetVerboseLevel() < 5) {
+    return;
+  }
+  double eta = 0.0;
+  if (tau > fabs(z) && (tau - z) > 1e-8) {
+    double numerator = tau + z;
+    double denominator = tau - z;
+    if (numerator > 0.0 && denominator > 0.0) {
+      eta = 0.5 * log(numerator / denominator);
+    } else {
+      eta = std::numeric_limits<double>::quiet_NaN();
+    }
+  } else {
+    eta = std::numeric_limits<double>::quiet_NaN();
+  }
+  JSINFO << MAGENTA << "[" << module << " Parton] tau=" << tau
+         << " x=" << x << " y=" << y << " z=" << z
+         << " eta=" << eta;
+}
+
+} // namespace
 
 // Register the module with the base class
 RegisterJetScapeModule<LBT> LBT::reg("Lbt");
@@ -635,6 +678,8 @@ void LBT::LBT0(int &n, double &ti) {
         xcar0 = V0[1][i];
         ycar0 = V0[2][i];
 
+        LogPartonState("LBT", tcar0, xcar0, ycar0, zcar0);
+
         double ed00, sd00, VX00, VY00, VZ00;
         int hydro_ctl0;
 
@@ -652,6 +697,7 @@ void LBT::LBT0(int &n, double &ti) {
         SpatialRapidity = 0.5 * std::log((tcar0 + zcar0) / (tcar0 - zcar0));
 
         GetHydroCellSignal(tcar0, xcar0, ycar0, zcar0, check_fluid_info_ptr);
+        LogMediumCell("LBT", tcar0, check_fluid_info_ptr.get());
         //VERBOSE(7)<< MAGENTA<<"Temperature from Brick (Signal) = "<<check_fluid_info_ptr->temperature;
 
         temp00 = check_fluid_info_ptr->temperature;
@@ -738,13 +784,15 @@ void LBT::LBT0(int &n, double &ti) {
           //                  } else if(bulkFlag==0) { // static medium
           //VX=0.0;
           //VY=0.0;
-          //VZ=0.0;
+        //VZ=0.0;
 
-          std::unique_ptr<FluidCellInfo> check_fluid_info_ptr;
+        std::unique_ptr<FluidCellInfo> check_fluid_info_ptr;
 
-          SpatialRapidity = 0.5 * std::log((tcar + zcar) / (tcar - zcar));
+        SpatialRapidity = 0.5 * std::log((tcar + zcar) / (tcar - zcar));
 
-          GetHydroCellSignal(tcar, xcar, ycar, zcar, check_fluid_info_ptr);
+        LogPartonState("LBT", tcar, xcar, ycar, zcar);
+        GetHydroCellSignal(tcar, xcar, ycar, zcar, check_fluid_info_ptr);
+        LogMediumCell("LBT", tcar, check_fluid_info_ptr.get());
           //VERBOSE(7)<< MAGENTA<<"Temperature from Brick (Signal) = "<<check_fluid_info_ptr->temperature;
 
           if (!GetJetSignalConnected()) {
@@ -974,7 +1022,9 @@ void LBT::LBT0(int &n, double &ti) {
 
           SpatialRapidity = 0.5 * std::log((tLoc + zLoc) / (tLoc - zLoc));
 
+          LogPartonState("LBT", tLoc, xLoc, yLoc, zLoc);
           GetHydroCellSignal(tLoc, xLoc, yLoc, zLoc, check_fluid_info_ptr);
+          LogMediumCell("LBT", tLoc, check_fluid_info_ptr.get());
           tempLoc = check_fluid_info_ptr->temperature;
           vxLoc = check_fluid_info_ptr->vx;
           vyLoc = check_fluid_info_ptr->vy;

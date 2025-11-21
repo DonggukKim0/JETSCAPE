@@ -21,6 +21,7 @@
 #include <string>
 
 #include <iostream>
+#include <limits>
 
 #include "FluidDynamics.h"
 #include <GTL/dfs.h>
@@ -31,6 +32,48 @@ using namespace Jetscape;
 using namespace std;
 
 const double QS = 0.9;
+
+namespace {
+
+void LogMediumCell(const char *module, double tau,
+                   const FluidCellInfo *cell_info) {
+  if (!cell_info) {
+    return;
+  }
+  if (JetScapeLogger::Instance()->GetVerboseLevel() < 5) {
+    return;
+  }
+  JSINFO << MAGENTA << "[" << module << " Medium] tau=" << tau
+         << " T=" << cell_info->temperature
+         << " e=" << cell_info->energy_density
+         << " s=" << cell_info->entropy_density
+         << " vx=" << cell_info->vx << " vy=" << cell_info->vy
+         << " vz=" << cell_info->vz;
+}
+
+void LogPartonState(const char *module, double tau,
+                    double x, double y, double z) {
+  if (JetScapeLogger::Instance()->GetVerboseLevel() < 5) {
+    return;
+  }
+  double eta = 0.0;
+  if (tau > fabs(z) && (tau - z) > 1e-8) {
+    double numerator = tau + z;
+    double denominator = tau - z;
+    if (numerator > 0.0 && denominator > 0.0) {
+      eta = 0.5 * log(numerator / denominator);
+    } else {
+      eta = std::numeric_limits<double>::quiet_NaN();
+    }
+  } else {
+    eta = std::numeric_limits<double>::quiet_NaN();
+  }
+  JSINFO << MAGENTA << "[" << module << " Parton] tau=" << tau
+         << " x=" << x << " y=" << y << " z=" << z
+         << " eta=" << eta;
+}
+
+} // namespace
 
 // Register the module with the base class
 RegisterJetScapeModule<Matter> Matter::reg("Matter");
@@ -446,11 +489,14 @@ void Matter::DoEnergyLoss(double deltaT, double time, double Q2,
       Dump_pIn_info(i, pIn);
       //exit(0);
     }
+    LogPartonState("MATTER", now_R0, now_Rx, now_Ry, now_Rz);
+
     double boostedTStart = tStart * cosh(SpatialRapidity);
     if (!in_vac && now_R0 >= boostedTStart) {
       if (now_R0 * now_R0 < now_Rz * now_Rz)
         cout << "Warning 1: " << now_R0 << "  " << now_Rz << endl;
       GetHydroCellSignal(now_R0, now_Rx, now_Ry, now_Rz, check_fluid_info_ptr);
+      LogMediumCell("MATTER", now_R0, check_fluid_info_ptr.get());
       //VERBOSE(8)<<MAGENTA<<"Temperature from medium = "<<check_fluid_info_ptr->temperature;
       now_temp = check_fluid_info_ptr->temperature;
       //JSINFO << BOLDYELLOW << "MATTER time = " << now_R0 << " x = " << now_Rx << " y = " << now_Ry << " z = " << now_Rz << " temp = " << now_temp;
@@ -687,6 +733,8 @@ void Matter::DoEnergyLoss(double deltaT, double time, double Q2,
           double el_ry = initRy + (el_time - initR0) * initVy;
           double el_rz = initRz + (el_time - initR0) * initVz;
 
+          LogPartonState("MATTER", el_time, el_rx, el_ry, el_rz);
+
           double tempLoc, sdLoc, vxLoc, vyLoc, vzLoc, qhatLoc, enerLoc;
           double betaLoc, gammaLoc, flowFactor;
           int hydro_ctl;
@@ -728,6 +776,7 @@ void Matter::DoEnergyLoss(double deltaT, double time, double Q2,
           }
           GetHydroCellSignal(el_time, el_rx, el_ry, el_rz,
                              check_fluid_info_ptr);
+          LogMediumCell("MATTER", el_time, check_fluid_info_ptr.get());
           VERBOSE(8) << MAGENTA << "Temperature from medium = "
                      << check_fluid_info_ptr->temperature;
 
@@ -3802,6 +3851,7 @@ double Matter::fillQhatTab(double y) {
     }
 
     GetHydroCellSignal(tLoc, xLoc, yLoc, zLoc, check_fluid_info_ptr);
+    LogMediumCell("MATTER", tLoc, check_fluid_info_ptr.get());
     VERBOSE(8) << MAGENTA << "Temperature from medium = "
                << check_fluid_info_ptr->temperature;
 

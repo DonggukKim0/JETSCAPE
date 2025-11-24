@@ -8,8 +8,8 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_40_50_bins_2"
-wantDir = "config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_40_50_bins_2"
+MAINGENERATOR = "run_config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_0_5_40_50_bins_1"
+wantDir = "config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_0_5_40_50_bins_1"
 TOTAL_EVENTS = 100
 
 
@@ -369,6 +369,7 @@ def write_condor_submit(
     transfer_inputs = ", \\\n                        ".join(
         [
             wantDir,
+            "JYUAna_configurations.json",
             "Pythia8",
             "nanoDict_rdict.pcm",
             "jcorranDict_rdict.pcm",

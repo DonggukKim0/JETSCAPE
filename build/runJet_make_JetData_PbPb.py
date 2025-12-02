@@ -14,7 +14,8 @@ from typing import List
 os.umask(0)
 
 MAINGENERATOR = "Gen_PbPb_JetData"
-wantDir = "hydro_files_PbPb"
+# wantDir = "hydro_files_PbPb"
+wantDir = "hydro_files_PbPb_cent_0_10"
 HYDRO_CONFIG_DIR = "hydro_files_PbPb_config"
 CONFIG_FILENAME = "jetscape_user_hydro_files.xml"
 TOTAL_EVENTS = 1

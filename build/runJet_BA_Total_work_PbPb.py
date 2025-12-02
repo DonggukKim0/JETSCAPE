@@ -8,9 +8,10 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_0_5_40_50_bins_1"
-wantDir = "config_files_nEvents_100K_PbPb_5020GeV_type_6_cent_0_5_40_50_bins_1"
-TOTAL_EVENTS = 100
+MAINGENERATOR = "run_config_files_nEvents_10K_PbPb_5020GeV_type_6_cent_0_10_bins_2"
+wantDir = "config_files_nEvents_10K_PbPb_5020GeV_type_6_cent_0_10_bins_2"
+TOTAL_EVENTS = 10
+RESULTS_BASE = pathlib.Path("/alice/data/dongguk/results_JETSCAPE")
 
 
 def gather_configurations(main_dir: str) -> list[pathlib.Path]:
@@ -350,7 +351,8 @@ def build_output_dir_names(config_rel_paths: list[str]) -> list[str]:
 
 def write_condor_submit(
     submit_path: pathlib.Path,
-    work_dir: str,
+    work_dir_name: str,
+    work_dir_path: pathlib.Path,
     config_dir: str,
     config_index: int,
     output_prefix: str,
@@ -361,45 +363,46 @@ def write_condor_submit(
     event_lines = "\n".join(str(i) for i in range(total_events))
     transfer_outputs = ",".join(
         [
-            f"{output_prefix}_final_state_hadrons_$(EventIndex).dat",
-            f"{output_prefix}_tree_$(EventIndex).root",
+            # f"{output_prefix}_final_state_hadrons_$(EventIndex).dat",
+            # f"{output_prefix}_tree_$(EventIndex).root",
             f"{output_prefix}_final_$(EventIndex).root",
         ]
     )
-    transfer_inputs = ", \\\n                        ".join(
-        [
-            wantDir,
-            "JYUAna_configurations.json",
-            "Pythia8",
-            "nanoDict_rdict.pcm",
-            "jcorranDict_rdict.pcm",
-            "alienv_envset.sh",
-            "runJetscape",
-            "jetscapeToJTree",
-            "JYUAna",
-            "jetscape_main.xml",
-            "music_input",
-            "freestream_input",
-            "EOS",
-            "LBT-tables",
-            "run.sh",
-        ]
-    )
-    hydro_source = pathlib.Path(main_dir) / "hydro_files_PbPb"
+    main_path = pathlib.Path(main_dir)
+    work_dir_posix = work_dir_path.as_posix()
+    transfer_sources = [
+        main_path / wantDir,
+        main_path / "JYUAna_configurations.json",
+        main_path / "Pythia8",
+        main_path / "nanoDict_rdict.pcm",
+        main_path / "jcorranDict_rdict.pcm",
+        main_path / "alienv_envset.sh",
+        main_path / "runJetscape",
+        main_path / "jetscapeToJTree",
+        main_path / "JYUAna",
+        main_path / "jetscape_main.xml",
+        main_path / "music_input",
+        main_path / "freestream_input",
+        main_path / "EOS",
+        main_path / "LBT-tables",
+        main_path / "run.sh",
+    ]
+    transfer_inputs = ", ".join(path.resolve().as_posix() for path in transfer_sources)
+    hydro_source = main_path / "hydro_files_PbPb"
     if not hydro_source.exists():
         raise FileNotFoundError(f"hydro_files_PbPb directory not found at {hydro_source}")
     hydro_source_env = hydro_source.as_posix()
     submit_path.write_text(
         f"""Universe                = vanilla
-Executable              = {work_dir}/macro/run.sh
+Executable              = {work_dir_posix}/macro/run.sh
 Accounting_Group        = group_alice
-JobBatchName            = {work_dir}_{config_dir}
-Log                     = {work_dir}/logs/{config_dir}_$(EventIndex).log
-Output                  = {work_dir}/{config_dir}_$(EventIndex).out
-Error                   = {work_dir}/{config_dir}_$(EventIndex).error
+JobBatchName            = {work_dir_name}_{config_dir}
+Log                     = {work_dir_posix}/logs/{config_dir}_$(EventIndex).log
+Output                  = {work_dir_posix}/{config_dir}_$(EventIndex).out
+Error                   = {work_dir_posix}/{config_dir}_$(EventIndex).error
 request_cpus            = 1
 request_memory          = 16GB
-request_disk            = 4GB
+request_disk            = 500MB
 # Transfer required executables and lightweight resources
 transfer_input_files    = {transfer_inputs}
 # Transfer .dat, .root (JTree), and final .root
@@ -413,7 +416,7 @@ arguments               = "$(Opt) $(ConfigIndex) $(EventIndex) $(SubmitEpoch)"
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
 periodic_remove         = (CurrentTime - EnteredCurrentStatus) > 604800
-output_destination      = file://{main_dir}/{work_dir}/out/$(ConfigDir)/
+output_destination      = file://{work_dir_posix}/out/$(ConfigDir)/
 Notification            = Never
 
 Queue EventIndex from (
@@ -438,9 +441,10 @@ def main() -> None:
     print(f"Events per configuration: {TOTAL_EVENTS}")
     print(f"Total HTCondor jobs: {total_jobs}")
 
+    RESULTS_BASE.mkdir(parents=True, exist_ok=True)
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     work_dir = f"{now}_{MAINGENERATOR}"
-    work_dir_path = pathlib.Path(main_dir) / work_dir
+    work_dir_path = RESULTS_BASE / work_dir
 
     for sub in ["macro", "out", "logs"]:
         (work_dir_path / sub).mkdir(parents=True, exist_ok=True)
@@ -457,6 +461,7 @@ def main() -> None:
         write_condor_submit(
             submit_path,
             work_dir,
+            work_dir_path,
             out_dir,
             config_index,
             output_prefixes[config_index],
@@ -468,9 +473,8 @@ def main() -> None:
 
     for idx, submit_path in enumerate(submit_paths, start=1):
         print(f"Submitting configuration {idx}/{config_count}")
-        submit_rel = submit_path.relative_to(main_path).as_posix()
         proc = subprocess.Popen(
-            ['condor_submit', submit_rel],
+            ['condor_submit', submit_path.as_posix()],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=main_path,

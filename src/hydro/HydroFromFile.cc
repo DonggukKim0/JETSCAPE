@@ -79,7 +79,7 @@ void HydroFromFile::InitializeHydro(Parameter parameter_list) {
     hydroinfo_MUSIC_ptr = new Hydroinfo_MUSIC();
     int verbose = GetXMLElementInt({"vlevel"});
     hydroinfo_MUSIC_ptr->set_verbose(verbose);
-  } else if (hydro_type_ == 7) {
+  } else if (hydro_type_ == 7 || hydro_type_ == 8) {
     hydroinfo_MUSIC_ptr = new Hydroinfo_MUSIC();
     hydroinfo_PreEq_ptr = new Hydroinfo_MUSIC();
     int verbose = GetXMLElementInt({"vlevel"});
@@ -246,7 +246,7 @@ void HydroFromFile::clean_hydro_event() {
     hydroinfo_MUSIC_ptr->clean_hydro_event();
   }
 
-  if (hydro_type_ == 7) {
+  if (hydro_type_ == 7 || hydro_type_ == 8) {
     hydroinfo_PreEq_ptr->clean_hydro_event();
   }
   hydro_status = NOT_START;

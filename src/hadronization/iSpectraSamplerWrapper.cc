@@ -32,23 +32,34 @@ RegisterJetScapeModule<iSpectraSamplerWrapper>
 iSpectraSamplerWrapper::iSpectraSamplerWrapper() {
     SetId("iSS");
     statusCode_ = 0;
+    reuse_hydro_ = false;
+    n_reuse_hydro_ = 1;
+    last_hydro_event_idx_ = -1;
 }
 
 iSpectraSamplerWrapper::~iSpectraSamplerWrapper() {}
 
-void iSpectraSamplerWrapper::InitTask() {
+int iSpectraSamplerWrapper::GetHydroEventIndex() {
+  int current_event = GetCurrentEvent();
+  if (reuse_hydro_ && n_reuse_hydro_ > 0) {
+    return current_event / n_reuse_hydro_;
+  }
+  return current_event;
+}
 
-  JSINFO << "Initialize a particle sampler (iSS)";
+std::string iSpectraSamplerWrapper::ResolveWorkingPath(int hydro_event_idx) {
+  const std::string token = "%EVENT%";
+  std::string resolved = working_path_template_;
+  std::string replacement = std::to_string(hydro_event_idx);
+  size_t pos = 0;
+  while ((pos = resolved.find(token, pos)) != std::string::npos) {
+    resolved.replace(pos, token.size(), replacement);
+    pos += replacement.size();
+  }
+  return resolved;
+}
 
-  std::string input_file =
-      GetXMLElementText({"SoftParticlization", "iSS", "iSS_input_file"});
-  std::string table_path =
-      GetXMLElementText({"SoftParticlization", "iSS", "iSS_table_path"});
-  std::string particle_table_path =
-      GetXMLElementText({"SoftParticlization", "iSS",
-                         "iSS_particle_table_path"});
-  std::string working_path =
-      GetXMLElementText({"SoftParticlization", "iSS", "iSS_working_path"});
+void iSpectraSamplerWrapper::InitSampler(const std::string &working_path) {
   int hydro_mode =
       GetXMLElementInt({"SoftParticlization", "iSS", "hydro_mode"});
   int number_of_repeated_sampling = GetXMLElementInt(
@@ -69,9 +80,9 @@ void iSpectraSamplerWrapper::InitTask() {
     hydro_mode = 2;
   }
 
-  iSpectraSampler_ptr_ = std::unique_ptr<iSS>(
-          new iSS(working_path, table_path, particle_table_path, input_file));
-  iSpectraSampler_ptr_->paraRdr_ptr->readFromFile(input_file);
+  iSpectraSampler_ptr_.reset(
+      new iSS(working_path, table_path_, particle_table_path_, input_file_));
+  iSpectraSampler_ptr_->paraRdr_ptr->readFromFile(input_file_);
 
   // overwrite some parameters
   int echoLevel = GetXMLElementInt({"vlevel"});
@@ -108,7 +119,7 @@ void iSpectraSamplerWrapper::InitTask() {
   iSpectraSampler_ptr_->paraRdr_ptr->setVal("calculate_vn", 0);
   iSpectraSampler_ptr_->paraRdr_ptr->setVal("MC_sampling", 4);
   iSpectraSampler_ptr_->paraRdr_ptr->setVal("include_spectators", 0);
- 
+
   iSpectraSampler_ptr_->paraRdr_ptr->setVal("RegVisYield", 1);
 
   iSpectraSampler_ptr_->paraRdr_ptr->setVal(
@@ -116,15 +127,48 @@ void iSpectraSamplerWrapper::InitTask() {
   iSpectraSampler_ptr_->paraRdr_ptr->echo();
 }
 
+void iSpectraSamplerWrapper::InitTask() {
+
+  JSINFO << "Initialize a particle sampler (iSS)";
+
+  input_file_ =
+      GetXMLElementText({"SoftParticlization", "iSS", "iSS_input_file"});
+  table_path_ =
+      GetXMLElementText({"SoftParticlization", "iSS", "iSS_table_path"});
+  particle_table_path_ =
+      GetXMLElementText({"SoftParticlization", "iSS",
+                         "iSS_particle_table_path"});
+  working_path_template_ =
+      GetXMLElementText({"SoftParticlization", "iSS", "iSS_working_path"});
+  std::string reuseHydro = GetXMLElementText({"setReuseHydro"}, false);
+  reuse_hydro_ = (reuseHydro.find("true") != std::string::npos);
+  n_reuse_hydro_ = GetXMLElementInt({"nReuseHydro"}, false);
+  if (n_reuse_hydro_ <= 0) {
+    n_reuse_hydro_ = 1;
+  }
+
+  int hydro_event_idx = GetHydroEventIndex();
+  current_working_path_ = ResolveWorkingPath(hydro_event_idx);
+  last_hydro_event_idx_ = hydro_event_idx;
+  InitSampler(current_working_path_);
+}
+
 void iSpectraSamplerWrapper::Exec() {
   JSINFO << "running iSS ...";
+
+  int hydro_event_idx = GetHydroEventIndex();
+  std::string working_path = ResolveWorkingPath(hydro_event_idx);
+  if (!iSpectraSampler_ptr_ || working_path != current_working_path_ ||
+      hydro_event_idx != last_hydro_event_idx_) {
+    current_working_path_ = working_path;
+    last_hydro_event_idx_ = hydro_event_idx;
+    InitSampler(current_working_path_);
+  }
 
   // generate symbolic links with music_input_file
   std::string music_input_file_path = GetXMLElementText(
           {"Hydro", "MUSIC", "MUSIC_input_file"});
-  std::string working_path =
-      GetXMLElementText({"SoftParticlization", "iSS", "iSS_working_path"});
-  std::string music_input = working_path + "/music_input";
+  std::string music_input = current_working_path_ + "/music_input";
   std::ifstream inputfile(music_input.c_str());
   if (!inputfile.good()) {
     std::ostringstream system_command;
@@ -136,6 +180,16 @@ void iSpectraSamplerWrapper::Exec() {
 
   int nCells = getSurfCellVector();
   if (nCells == 0) {
+    std::string surface_path = current_working_path_ + "/surface.dat";
+    std::ifstream surface_file(surface_path.c_str());
+    if (surface_file.good()) {
+      JSINFO << "No in-memory surface cells; reading surface file: "
+             << surface_path;
+    } else {
+      JSWARN << "No in-memory surface cells and surface file not found: "
+             << surface_path;
+    }
+    surface_file.close();
     int status = iSpectraSampler_ptr_->read_in_FO_surface();
     if (status != 0) {
       JSWARN << "Some errors happened in reading in the hyper-surface";
@@ -161,7 +215,9 @@ void iSpectraSamplerWrapper::Exec() {
 
 void iSpectraSamplerWrapper::Clear() {
   VERBOSE(2) << "Finish the particle sampling";
-  iSpectraSampler_ptr_->clear();
+  if (iSpectraSampler_ptr_) {
+    iSpectraSampler_ptr_->clear();
+  }
   for (unsigned i = 0; i < Hadron_list_.size(); i++) {
     Hadron_list_.at(i).clear();
   }

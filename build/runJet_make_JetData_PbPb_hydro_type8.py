@@ -15,17 +15,20 @@ os.umask(0)
 
 MAINGENERATOR = "Gen_PbPb_JetData"
 wantDir = "hydro_files_PbPb"
-HYDRO_CONFIG_DIR = "hydro_files_PbPb_config"
+HYDRO_CONFIG_DIR = "hydro_files_PbPb_cent_60_80"
 CONFIG_FILENAME = "jetscape_user_hydro_files.xml"
 TOTAL_EVENTS = 1
 RESULTS_BASE = Path(os.environ.get("JETDATA_RESULTS_BASE", "/alice/data/dongguk/results_JetData"))
-SHARED_HYDRO_DIR = Path("/alice/data/dongguk/hydro_files_PbPb")
+SHARED_HYDRO_DIR = Path("/alice/data/dongguk/temp")
 
 RUN_EXECUTABLE = "./runJetscape"
 TEMP_DIR_NAME = "temp"
 STAGED_EVENT_NAME = "event-0"
 OUTPUT_DIR_NAME = "out"
-music_output = "evolution_all_xyeta_MUSIC.dat"
+PREEQ_OUTPUT = "evolution_all_xyeta_fs.dat"
+MUSIC_OUTPUT = "evolution_all_xyeta_MUSIC.dat"
+PREEQ_RENAMED = "PreEq_evo.dat"
+MUSIC_RENAMED = "MUSIC_evo.dat"
 
 
 def extract_output_prefix(config_path: Path) -> str:
@@ -134,28 +137,6 @@ def build_run_script(
     OUTPUT_LABEL="${{OUTPUT_LABELS[$JOB_INDEX]}}"
     CONFIG_PATH="${{CONFIG_FILES[$JOB_INDEX]}}"
 
-    MUSIC_INPUT_PATH=$(python3 - <<'PY' "$CONFIG_PATH"
-import sys
-import xml.etree.ElementTree as ET
-
-path = sys.argv[1]
-try:
-    root = ET.parse(path).getroot()
-except Exception:
-    root = None
-value = None
-if root is not None:
-    text = root.findtext('.//MUSIC_input_file')
-    if text:
-        value = text.strip()
-print(value or "")
-PY
-    )
-    if [[ -z "$MUSIC_INPUT_PATH" ]]; then
-      MUSIC_INPUT_PATH="music_input"
-    fi
-
-
     echo "Selected initial file: $INITIAL_PATH"
     echo "Output label: $OUTPUT_LABEL"
     echo "Config file: $CONFIG_PATH"
@@ -174,9 +155,19 @@ PY
 
     cp -a "$EVENT_SOURCE_DIR"/. "$STAGED_DIR"/
 
-    MUSIC_OUTPUT="{music_output}"
+    PREEQ_OUTPUT="{PREEQ_OUTPUT}"
+    MUSIC_OUTPUT="{MUSIC_OUTPUT}"
     if [[ -f "$MUSIC_OUTPUT" ]]; then
       rm -f "$MUSIC_OUTPUT"
+    fi
+    if [[ -f "$PREEQ_OUTPUT" ]]; then
+      rm -f "$PREEQ_OUTPUT"
+    fi
+    if [[ -f "{PREEQ_RENAMED}" ]]; then
+      rm -f "{PREEQ_RENAMED}"
+    fi
+    if [[ -f "{MUSIC_RENAMED}" ]]; then
+      rm -f "{MUSIC_RENAMED}"
     fi
 
     JOB_START_FMT=$(date +"%F %T")
@@ -207,6 +198,14 @@ PY
       exit $RUN_STATUS
     fi
 
+    if [[ -f "$PREEQ_OUTPUT" ]]; then
+      echo "Found $PREEQ_OUTPUT after runJetscape"
+    else
+      echo "ERROR: Expected $PREEQ_OUTPUT was not produced." >&2
+      rm -rf "$TEMP_ROOT"
+      exit 1
+    fi
+
     if [[ -f "$MUSIC_OUTPUT" ]]; then
       echo "Found $MUSIC_OUTPUT after runJetscape"
     else
@@ -217,33 +216,13 @@ PY
 
     OUTPUT_DIR="out/$OUTPUT_LABEL"
     mkdir -p "$OUTPUT_DIR"
-    mv -f "$MUSIC_OUTPUT" "$OUTPUT_DIR/$MUSIC_OUTPUT"
-    cp -f "$OUTPUT_DIR/$MUSIC_OUTPUT" "$MUSIC_OUTPUT"
-    echo "Stored $OUTPUT_DIR/$MUSIC_OUTPUT"
+    mv -f "$PREEQ_OUTPUT" "$OUTPUT_DIR/{PREEQ_RENAMED}"
+    cp -f "$OUTPUT_DIR/{PREEQ_RENAMED}" "{PREEQ_RENAMED}"
+    echo "Stored $OUTPUT_DIR/{PREEQ_RENAMED}"
 
-    if [[ -x ./convert_to_h5 ]]; then
-      echo "Running convert_to_h5 with $MUSIC_INPUT_PATH ..."
-      if [[ -f setup_convert_to_h5.sh ]]; then
-        source setup_convert_to_h5.sh
-      else
-        echo "ERROR: setup_convert_to_h5.sh not found; aborting convert_to_h5." >&2
-        exit 1
-      fi
-      if ./convert_to_h5 "$MUSIC_INPUT_PATH"; then
-        if [[ -f JetData.h5 ]]; then
-          mv -f JetData.h5 "$OUTPUT_DIR/JetData.h5"
-          cp -f "$OUTPUT_DIR/JetData.h5" JetData.h5
-          echo "Stored $OUTPUT_DIR/JetData.h5"
-        else
-          echo "WARNING: convert_to_h5 completed but JetData.h5 not found." >&2
-        fi
-      else
-        status=$?
-        echo "WARNING: convert_to_h5 exited with status $status." >&2
-      fi
-    else
-      echo "WARNING: convert_to_h5 not available; skipping HDF5 conversion." >&2
-    fi
+    mv -f "$MUSIC_OUTPUT" "$OUTPUT_DIR/{MUSIC_RENAMED}"
+    cp -f "$OUTPUT_DIR/{MUSIC_RENAMED}" "{MUSIC_RENAMED}"
+    echo "Stored $OUTPUT_DIR/{MUSIC_RENAMED}"
 
     if [[ -n "$JOB_START_EPOCH" ]]; then
       JOB_END_FMT=$(date +"%F %T")
@@ -339,10 +318,10 @@ request_cpus            = 1
 request_memory          = 16GB
 request_disk            = 4GB
 # Transfer all required executables and scripts
-transfer_input_files    = Pythia8,convert_to_h5,setup_convert_to_h5.sh,{HYDRO_CONFIG_DIR},nanoDict_rdict.pcm,jcorranDict_rdict.pcm,alienv_envset.sh,runJetscape,jetscape_main.xml,EOS,LBT-tables,run.sh
-# Transfer MUSIC evolution output
-transfer_output_files   = evolution_all_xyeta_MUSIC.dat,JetData.h5
-transfer_output_remaps  = "evolution_all_xyeta_MUSIC.dat={work_dir_posix}/out/$(ConfigDir)/evolution_all_xyeta_MUSIC.dat;JetData.h5={work_dir_posix}/out/$(ConfigDir)/JetData.h5"
+transfer_input_files    = Pythia8,{HYDRO_CONFIG_DIR},nanoDict_rdict.pcm,jcorranDict_rdict.pcm,alienv_envset.sh,runJetscape,jetscape_main.xml,EOS,LBT-tables,run.sh
+# Transfer PreEq + MUSIC evolution output
+transfer_output_files   = {PREEQ_RENAMED},{MUSIC_RENAMED}
+transfer_output_remaps  = "{PREEQ_RENAMED}={work_dir_posix}/out/$(ConfigDir)/{PREEQ_RENAMED};{MUSIC_RENAMED}={work_dir_posix}/out/$(ConfigDir)/{MUSIC_RENAMED}"
 Opt                     = {MAINGENERATOR}
 ConfigDir               = {output_dir}
 InitialIndex            = {initial_index}
@@ -417,10 +396,11 @@ def stage_event_directory(temp_root: Path, source_event_dir: Path) -> Path:
 
 
 def ensure_music_output_absent(base_path: Path) -> None:
-    """Remove any leftover MUSIC output file before starting the next run."""
-    target = base_path / MUSIC_OUTPUT
-    if target.exists():
-        target.unlink()
+    """Remove any leftover PreEq/MUSIC output files before starting the next run."""
+    for name in (PREEQ_OUTPUT, MUSIC_OUTPUT, PREEQ_RENAMED, MUSIC_RENAMED):
+        target = base_path / name
+        if target.exists():
+            target.unlink()
 
 
 def run_jetscape_local(base_path: Path, config_path: Path) -> None:
@@ -428,18 +408,27 @@ def run_jetscape_local(base_path: Path, config_path: Path) -> None:
     subprocess.run([RUN_EXECUTABLE, str(config_path)], cwd=base_path, check=True)
 
 
-def store_music_output(base_path: Path, destination_dir: Path) -> Path:
-    """Move the produced MUSIC evolution file into the run-specific output directory."""
-    source = base_path / MUSIC_OUTPUT
-    if not source.exists():
+def store_music_output(base_path: Path, destination_dir: Path) -> tuple[Path, Path]:
+    """Move the produced PreEq/MUSIC evolution files into the run-specific output directory."""
+    preeq_source = base_path / PREEQ_OUTPUT
+    music_source = base_path / MUSIC_OUTPUT
+    if not preeq_source.exists():
+        raise FileNotFoundError("runJetscape did not produce evolution_all_xyeta_fs.dat")
+    if not music_source.exists():
         raise FileNotFoundError("runJetscape did not produce evolution_all_xyeta_MUSIC.dat")
 
     destination_dir.mkdir(parents=True, exist_ok=True)
-    destination = destination_dir / MUSIC_OUTPUT
-    if destination.exists():
-        destination.unlink()
-    shutil.move(str(source), str(destination))
-    return destination
+    preeq_dest = destination_dir / PREEQ_RENAMED
+    music_dest = destination_dir / MUSIC_RENAMED
+    if preeq_dest.exists():
+        preeq_dest.unlink()
+    if music_dest.exists():
+        music_dest.unlink()
+    shutil.move(str(preeq_source), str(preeq_dest))
+    shutil.move(str(music_source), str(music_dest))
+    shutil.copy2(str(preeq_dest), str(base_path / PREEQ_RENAMED))
+    shutil.copy2(str(music_dest), str(base_path / MUSIC_RENAMED))
+    return preeq_dest, music_dest
 
 
 def build_local_output_dir_name(cent_name: str, event_name: str) -> str:
@@ -474,8 +463,9 @@ def run_local_mode(main_path: Path) -> None:
             stage_event_directory(temp_root, event_dir)
             ensure_music_output_absent(main_path)
             run_jetscape_local(main_path, config_rel)
-            stored_path = store_music_output(main_path, destination_dir)
-            print(f"    Stored {stored_path.relative_to(main_path)}")
+            preeq_path, music_path = store_music_output(main_path, destination_dir)
+            print(f"    Stored {preeq_path.relative_to(main_path)}")
+            print(f"    Stored {music_path.relative_to(main_path)}")
         except subprocess.CalledProcessError as exc:
             print(f"    ERROR: runJetscape exited with status {exc.returncode}")
             raise

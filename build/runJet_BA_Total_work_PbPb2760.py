@@ -9,15 +9,15 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_OO5360_config_xml"
-wantDir = "OO5360_config_xml"
+MAINGENERATOR = "run_project_3_PbPb2760_cent_0_5"
+wantDir = "project_3_PbPb2760_cent_0_5"
 TOTAL_EVENTS = 10
 RESULTS_BASE = pathlib.Path("/alice/data/dongguk/results_JETSCAPE")
-SHARED_HYDRO_DIR = pathlib.Path("/alice/data/dongguk/hydro_files_OO")
+SHARED_HYDRO_DIR = pathlib.Path("/alice/data/dongguk/hydro_files_PbPb2760")
 SHARED_LBT_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/LBT-tables")
 SHARED_EOS_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/EOS")
 SHARED_PYTHIA_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/Pythia8")
-ACCEPTANCE = "JYUAna_configurations_OO.json"
+ACCEPTANCE = "JYUAna_configurations_PbPb2760.json"
 
 
 def confirm_setting(label: str, value: object) -> None:
@@ -114,18 +114,23 @@ SCRIPT_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
 
 HYDRO_SOURCE_DIR="${{HYDRO_SOURCE_DIR:-{default_hydro_source}}}"
 if [[ -z "$HYDRO_SOURCE_DIR" ]]; then
-  echo "ERROR: HYDRO_SOURCE_DIR is not set. Provide a shared hydro_files_OO path via the environment." >&2
+  echo "ERROR: HYDRO_SOURCE_DIR is not set. Provide a shared hydro_files_PbPb2760 path via the environment." >&2
   exit 1
 fi
 if [[ ! -d "$HYDRO_SOURCE_DIR" ]]; then
   echo "ERROR: HYDRO_SOURCE_DIR '$HYDRO_SOURCE_DIR' does not exist or is not a directory." >&2
   exit 1
 fi
-if [[ -e "hydro_files_OO" && ! -L "hydro_files_OO" ]]; then
-  echo "ERROR: hydro_files_OO exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+if [[ -e "hydro_files_PbPb2760" && ! -L "hydro_files_PbPb2760" ]]; then
+  echo "ERROR: hydro_files_PbPb2760 exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
   exit 1
 fi
-ln -sfn "$HYDRO_SOURCE_DIR" hydro_files_OO
+if [[ -e "hydro_files_PbPb2760_backup" && ! -L "hydro_files_PbPb2760_backup" ]]; then
+  echo "ERROR: hydro_files_PbPb2760_backup exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+  exit 1
+fi
+ln -sfn "$HYDRO_SOURCE_DIR" hydro_files_PbPb2760
+ln -sfn "$HYDRO_SOURCE_DIR" hydro_files_PbPb2760_backup
 
 LBT_SOURCE_DIR="${{LBT_SOURCE_DIR:-{default_lbt_source}}}"
 if [[ -z "$LBT_SOURCE_DIR" ]]; then
@@ -499,7 +504,7 @@ def write_condor_submit(
     ]
     transfer_inputs = ", ".join(path.resolve().as_posix() for path in transfer_sources)
     if not SHARED_HYDRO_DIR.exists():
-        raise FileNotFoundError(f"hydro_files_OO directory not found at {SHARED_HYDRO_DIR}")
+        raise FileNotFoundError(f"hydro_files_PbPb directory not found at {SHARED_HYDRO_DIR}")
     if not SHARED_LBT_DIR.exists():
         raise FileNotFoundError(f"LBT-tables directory not found at {SHARED_LBT_DIR}")
     if not SHARED_EOS_DIR.exists():

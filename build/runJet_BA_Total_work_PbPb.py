@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from datetime import datetime
 from collections import Counter
+import time
 import subprocess
 import pathlib
 import os
@@ -8,10 +9,63 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_config_files_nEvents_10K_PbPb_5020GeV_type_6_cent_0_10_bins_2"
-wantDir = "config_files_nEvents_10K_PbPb_5020GeV_type_6_cent_0_10_bins_2"
+MAINGENERATOR = "run_renewal_pTHat_cut_cent_0_5"
+wantDir = "renewal_pTHat_cut_cent_0_5"
 TOTAL_EVENTS = 10
 RESULTS_BASE = pathlib.Path("/alice/data/dongguk/results_JETSCAPE")
+SHARED_HYDRO_DIR = pathlib.Path("/alice/data/dongguk/hydro_files_PbPb")
+SHARED_LBT_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/LBT-tables")
+SHARED_EOS_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/EOS")
+SHARED_PYTHIA_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/Pythia8")
+ACCEPTANCE = "JYUAna_configurations.json"
+
+
+def confirm_setting(label: str, value: object) -> None:
+    print(f"{label}: {value}")
+    answer = input("Is this correct? (yes/no): ").strip().lower()
+    if answer != "yes":
+        print("Stop.")
+        raise SystemExit(1)
+
+
+def progress_bar(current: int, total: int, width: int = 24) -> str:
+    if total <= 0:
+        return "[░░░░░░░░░░░░░░░░░░░░░░] 0/0"
+    filled = int(width * current / total)
+    bar = "█" * filled + "░" * (width - filled)
+    return f"[{bar}] {current}/{total}"
+
+
+def format_duration(seconds: float) -> str:
+    if seconds < 0:
+        seconds = 0
+    total = int(seconds)
+    minutes, secs = divmod(total, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def render_progress_line(current: int, total: int, elapsed: float) -> str:
+    percent = int((current / total) * 100) if total else 0
+    if current <= 0:
+        eta = "--:--"
+    else:
+        rate = elapsed / current
+        eta = format_duration(rate * (total - current))
+    return f"🚀 Submitting jobs... {progress_bar(current, total)}  {percent:3d}%  ⏱ ETA {eta}"
+
+
+def print_launch_banner() -> None:
+    print(f"🚀 Launching JETSCAPE: {MAINGENERATOR}")
+    print(f"Config: {wantDir}  Events: {TOTAL_EVENTS}")
+    print(f"Hydro: {SHARED_HYDRO_DIR}")
+    print(f"LBT tables: {SHARED_LBT_DIR}")
+    print(f"EOS: {SHARED_EOS_DIR}")
+    print(f"Pythia8: {SHARED_PYTHIA_DIR}")
+    print(f"Acceptance: {ACCEPTANCE}")
+    print()
 
 
 def gather_configurations(main_dir: str) -> list[pathlib.Path]:
@@ -48,12 +102,17 @@ def build_run_script(
     run_script_path: pathlib.Path, config_rel_paths: list[str], total_events: int
 ) -> None:
     config_lines = "\n".join(f"  \"{rel}\"" for rel in config_rel_paths)
+    default_hydro_source = SHARED_HYDRO_DIR.as_posix()
+    default_lbt_source = SHARED_LBT_DIR.as_posix()
+    default_eos_source = SHARED_EOS_DIR.as_posix()
+    default_pythia_source = SHARED_PYTHIA_DIR.as_posix()
+    acceptance_name = pathlib.Path(ACCEPTANCE).name
     script_contents = f"""#!/bin/bash
 echo \"INIT! $1 $2 $3 $4 $5\"
 source alienv_envset.sh
 SCRIPT_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
 
-HYDRO_SOURCE_DIR="${{HYDRO_SOURCE_DIR:-}}"
+HYDRO_SOURCE_DIR="${{HYDRO_SOURCE_DIR:-{default_hydro_source}}}"
 if [[ -z "$HYDRO_SOURCE_DIR" ]]; then
   echo "ERROR: HYDRO_SOURCE_DIR is not set. Provide a shared hydro_files_PbPb path via the environment." >&2
   exit 1
@@ -66,7 +125,66 @@ if [[ -e "hydro_files_PbPb" && ! -L "hydro_files_PbPb" ]]; then
   echo "ERROR: hydro_files_PbPb exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
   exit 1
 fi
+if [[ -e "hydro_files_PbPb_backup" && ! -L "hydro_files_PbPb_backup" ]]; then
+  echo "ERROR: hydro_files_PbPb_backup exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+  exit 1
+fi
 ln -sfn "$HYDRO_SOURCE_DIR" hydro_files_PbPb
+ln -sfn "$HYDRO_SOURCE_DIR" hydro_files_PbPb_backup
+
+LBT_SOURCE_DIR="${{LBT_SOURCE_DIR:-{default_lbt_source}}}"
+if [[ -z "$LBT_SOURCE_DIR" ]]; then
+  echo "ERROR: LBT_SOURCE_DIR is not set. Provide a shared LBT-tables path via the environment." >&2
+  exit 1
+fi
+if [[ ! -d "$LBT_SOURCE_DIR" ]]; then
+  echo "ERROR: LBT_SOURCE_DIR '$LBT_SOURCE_DIR' does not exist or is not a directory." >&2
+  exit 1
+fi
+if [[ -e "LBT-tables" && ! -L "LBT-tables" ]]; then
+  echo "ERROR: LBT-tables exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+  exit 1
+fi
+ln -sfn "$LBT_SOURCE_DIR" LBT-tables
+
+EOS_SOURCE_DIR="${{EOS_SOURCE_DIR:-{default_eos_source}}}"
+if [[ -z "$EOS_SOURCE_DIR" ]]; then
+  echo "ERROR: EOS_SOURCE_DIR is not set. Provide a shared EOS path via the environment." >&2
+  exit 1
+fi
+if [[ ! -d "$EOS_SOURCE_DIR" ]]; then
+  echo "ERROR: EOS_SOURCE_DIR '$EOS_SOURCE_DIR' does not exist or is not a directory." >&2
+  exit 1
+fi
+if [[ -e "EOS" && ! -L "EOS" ]]; then
+  echo "ERROR: EOS exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+  exit 1
+fi
+ln -sfn "$EOS_SOURCE_DIR" EOS
+
+PYTHIA8_SOURCE_DIR="${{PYTHIA8_SOURCE_DIR:-{default_pythia_source}}}"
+if [[ -z "$PYTHIA8_SOURCE_DIR" ]]; then
+  echo "ERROR: PYTHIA8_SOURCE_DIR is not set. Provide a shared Pythia8 path via the environment." >&2
+  exit 1
+fi
+if [[ ! -d "$PYTHIA8_SOURCE_DIR" ]]; then
+  echo "ERROR: PYTHIA8_SOURCE_DIR '$PYTHIA8_SOURCE_DIR' does not exist or is not a directory." >&2
+  exit 1
+fi
+if [[ -e "Pythia8" && ! -L "Pythia8" ]]; then
+  echo "ERROR: Pythia8 exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+  exit 1
+fi
+ln -sfn "$PYTHIA8_SOURCE_DIR" Pythia8
+
+ACCEPTANCE_FILE="{acceptance_name}"
+if [[ ! -f "$ACCEPTANCE_FILE" ]]; then
+  echo "ERROR: Acceptance config '$ACCEPTANCE_FILE' not found." >&2
+  exit 1
+fi
+if [[ "$ACCEPTANCE_FILE" != "JYUAna_configurations.json" ]]; then
+  ln -sfn "$ACCEPTANCE_FILE" JYUAna_configurations.json
+fi
 
 CONFIG_FILES=(
 {config_lines}
@@ -372,8 +490,7 @@ def write_condor_submit(
     work_dir_posix = work_dir_path.as_posix()
     transfer_sources = [
         main_path / wantDir,
-        main_path / "JYUAna_configurations.json",
-        main_path / "Pythia8",
+        main_path / ACCEPTANCE,
         main_path / "nanoDict_rdict.pcm",
         main_path / "jcorranDict_rdict.pcm",
         main_path / "alienv_envset.sh",
@@ -383,15 +500,22 @@ def write_condor_submit(
         main_path / "jetscape_main.xml",
         main_path / "music_input",
         main_path / "freestream_input",
-        main_path / "EOS",
-        main_path / "LBT-tables",
         main_path / "run.sh",
     ]
     transfer_inputs = ", ".join(path.resolve().as_posix() for path in transfer_sources)
-    hydro_source = main_path / "hydro_files_PbPb"
-    if not hydro_source.exists():
-        raise FileNotFoundError(f"hydro_files_PbPb directory not found at {hydro_source}")
-    hydro_source_env = hydro_source.as_posix()
+    if not SHARED_HYDRO_DIR.exists():
+        raise FileNotFoundError(f"hydro_files_PbPb directory not found at {SHARED_HYDRO_DIR}")
+    if not SHARED_LBT_DIR.exists():
+        raise FileNotFoundError(f"LBT-tables directory not found at {SHARED_LBT_DIR}")
+    if not SHARED_EOS_DIR.exists():
+        raise FileNotFoundError(f"EOS directory not found at {SHARED_EOS_DIR}")
+    if not SHARED_PYTHIA_DIR.exists():
+        raise FileNotFoundError(f"Pythia8 directory not found at {SHARED_PYTHIA_DIR}")
+    hydro_source_env = SHARED_HYDRO_DIR.as_posix()
+    lbt_source_env = SHARED_LBT_DIR.as_posix()
+    eos_source_env = SHARED_EOS_DIR.as_posix()
+    pythia_source_env = SHARED_PYTHIA_DIR.as_posix()
+    home_env = os.environ.get("HOME", "/alice/home/dongguk")
     submit_path.write_text(
         f"""Universe                = vanilla
 Executable              = {work_dir_posix}/macro/run.sh
@@ -401,8 +525,8 @@ Log                     = {work_dir_posix}/logs/{config_dir}_$(EventIndex).log
 Output                  = {work_dir_posix}/{config_dir}_$(EventIndex).out
 Error                   = {work_dir_posix}/{config_dir}_$(EventIndex).error
 request_cpus            = 1
-request_memory          = 16GB
-request_disk            = 500MB
+request_memory          = 6GB
+request_disk            = 2GB
 # Transfer required executables and lightweight resources
 transfer_input_files    = {transfer_inputs}
 # Transfer .dat, .root (JTree), and final .root
@@ -411,7 +535,7 @@ Opt                     = {MAINGENERATOR}
 ConfigDir               = {config_dir}
 ConfigIndex             = {config_index}
 SubmitEpoch             = {submit_epoch}
-environment            = "HYDRO_SOURCE_DIR={hydro_source_env}"
+environment            = "HYDRO_SOURCE_DIR={hydro_source_env} LBT_SOURCE_DIR={lbt_source_env} EOS_SOURCE_DIR={eos_source_env} PYTHIA8_SOURCE_DIR={pythia_source_env} HOME={home_env}"
 arguments               = "$(Opt) $(ConfigIndex) $(EventIndex) $(SubmitEpoch)"
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
@@ -429,6 +553,17 @@ Queue EventIndex from (
 def main() -> None:
     main_dir = os.path.dirname(os.path.realpath(__file__))
     main_path = pathlib.Path(main_dir)
+
+    confirm_setting("wantDir", wantDir)
+    confirm_setting("TOTAL_EVENTS", TOTAL_EVENTS)
+    confirm_setting("RESULTS_BASE", RESULTS_BASE)
+    confirm_setting("SHARED_HYDRO_DIR", SHARED_HYDRO_DIR)
+    confirm_setting("SHARED_LBT_DIR", SHARED_LBT_DIR)
+    confirm_setting("SHARED_EOS_DIR", SHARED_EOS_DIR)
+    confirm_setting("SHARED_PYTHIA_DIR", SHARED_PYTHIA_DIR)
+    confirm_setting("ACCEPTANCE", ACCEPTANCE)
+
+    print_launch_banner()
 
     config_paths = gather_configurations(main_dir)
     config_rel = [path.relative_to(main_dir).as_posix() for path in config_paths]
@@ -471,8 +606,11 @@ def main() -> None:
         )
         submit_paths.append(submit_path)
 
+    total_submits = len(submit_paths)
+    start_submit = time.monotonic()
+    if total_submits:
+        print(render_progress_line(0, total_submits, 0), end="\r", flush=True)
     for idx, submit_path in enumerate(submit_paths, start=1):
-        print(f"Submitting configuration {idx}/{config_count}")
         proc = subprocess.Popen(
             ['condor_submit', submit_path.as_posix()],
             stdout=subprocess.PIPE,
@@ -481,12 +619,18 @@ def main() -> None:
             text=True,
         )
         out, err = proc.communicate()
-        if out:
-            print(out.strip())
-        if err:
-            print(err.strip())
         if proc.returncode != 0:
+            print()
+            if out:
+                print(out.strip())
+            if err:
+                print(err.strip())
             raise RuntimeError(f"condor_submit failed for {submit_path.name}")
+        if total_submits:
+            elapsed = time.monotonic() - start_submit
+            line = render_progress_line(idx, total_submits, elapsed)
+            end_char = "\n" if idx == total_submits else "\r"
+            print(line, end=end_char, flush=True)
 
 if __name__ == "__main__":
     main()

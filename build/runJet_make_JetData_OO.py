@@ -18,12 +18,33 @@ wantDir = "hydro_files_OO"
 HYDRO_CONFIG_DIR = "hydro_files_OO_config"
 CONFIG_FILENAME = "jetscape_user_hydro_files.xml"
 TOTAL_EVENTS = 1
+RESULTS_BASE = Path(os.environ.get("JETDATA_RESULTS_BASE", "/alice/data/dongguk/results_JetData"))
+DEFAULT_SHARED_HYDRO_DIRS = (
+    Path("/alice/data/dongguk/hydro_files_OO_0_100"),
+    Path("/alice/data/dongguk/hydro_files_OO"),
+)
+
+
+def resolve_shared_hydro_dir() -> Path:
+    override = os.environ.get("HYDRO_SOURCE_DIR")
+    if override:
+        return Path(override)
+    for candidate in DEFAULT_SHARED_HYDRO_DIRS:
+        if candidate.exists():
+            return candidate
+    return DEFAULT_SHARED_HYDRO_DIRS[0]
+
+
+SHARED_HYDRO_DIR = resolve_shared_hydro_dir()
 
 RUN_EXECUTABLE = "./runJetscape"
 TEMP_DIR_NAME = "temp"
 STAGED_EVENT_NAME = "event-0"
 OUTPUT_DIR_NAME = "out"
-music_output = "evolution_all_xyeta_MUSIC.dat"
+PREEQ_OUTPUT = "evolution_all_xyeta_fs.dat"
+MUSIC_OUTPUT = "evolution_all_xyeta_MUSIC.dat"
+PREEQ_RENAMED = "PreEq_evo.dat"
+MUSIC_RENAMED = "MUSIC_evo.dat"
 
 
 def extract_output_prefix(config_path: Path) -> str:
@@ -57,42 +78,27 @@ def build_run_script(
         initial_lines = "\n".join(f'  "{rel}"' for rel in initial_rel_paths)
         output_lines = "\n".join(f'  "{name}"' for name in output_dir_names)
         config_lines = "\n".join(f'  "{rel}"' for rel in config_rel_paths)
+        default_hydro_source = SHARED_HYDRO_DIR.as_posix()
 
         script_contents = f"""#!/bin/bash
     echo "INIT! $1 $2 $3 $4 $5"
     source alienv_envset.sh
     SCRIPT_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
-    WORK_DIR="$(pwd)"
-    if [[ -d "$SCRIPT_DIR/../lib" && -f "$SCRIPT_DIR/../runJetscape" ]]; then
-      BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-    else
-      BASE_DIR="$WORK_DIR"
+
+    HYDRO_SOURCE_DIR="${{HYDRO_SOURCE_DIR:-{default_hydro_source}}}"
+    if [[ -z "$HYDRO_SOURCE_DIR" ]]; then
+      echo "ERROR: HYDRO_SOURCE_DIR is not set. Provide a shared hydro_files_OO path via the environment." >&2
+      exit 1
     fi
-
-    if [[ -d "$BASE_DIR/lib" ]]; then
-      (cd "$BASE_DIR/lib" && ln -sf libgsl.so.28.0.0 libgsl.so.28)
+    if [[ ! -d "$HYDRO_SOURCE_DIR" ]]; then
+      echo "ERROR: HYDRO_SOURCE_DIR '$HYDRO_SOURCE_DIR' does not exist or is not a directory." >&2
+      exit 1
     fi
-
-    EXTRA_LIB_DIRS=(
-      "$BASE_DIR/lib"
-      "$BASE_DIR/lib_boost"
-      "$BASE_DIR/lib_hdf5"
-      "$BASE_DIR/src/lib"
-      "$BASE_DIR/external_packages/gtl/lib"
-      "$BASE_DIR/external_packages/music/src"
-    )
-
-    for libdir in "${{EXTRA_LIB_DIRS[@]}}"; do
-      if [[ -d "$libdir" ]]; then
-        if [[ -z "$LD_LIBRARY_PATH" ]]; then
-          LD_LIBRARY_PATH="$libdir"
-        else
-          LD_LIBRARY_PATH="$libdir:$LD_LIBRARY_PATH"
-        fi
-      fi
-    done
-    export LD_LIBRARY_PATH
-    echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+    if [[ -e "{wantDir}" && ! -L "{wantDir}" ]]; then
+      echo "ERROR: {wantDir} exists locally and is not a symlink. Remove it so the shared directory can be linked." >&2
+      exit 1
+    fi
+    ln -sfn "$HYDRO_SOURCE_DIR" "{wantDir}"
     
     INITIAL_FILES=(
     {initial_lines}
@@ -146,28 +152,6 @@ def build_run_script(
     OUTPUT_LABEL="${{OUTPUT_LABELS[$JOB_INDEX]}}"
     CONFIG_PATH="${{CONFIG_FILES[$JOB_INDEX]}}"
 
-    MUSIC_INPUT_PATH=$(python3 - <<'PY' "$CONFIG_PATH"
-import sys
-import xml.etree.ElementTree as ET
-
-path = sys.argv[1]
-try:
-    root = ET.parse(path).getroot()
-except Exception:
-    root = None
-value = None
-if root is not None:
-    text = root.findtext('.//MUSIC_input_file')
-    if text:
-        value = text.strip()
-print(value or "")
-PY
-    )
-    if [[ -z "$MUSIC_INPUT_PATH" ]]; then
-      MUSIC_INPUT_PATH="music_input"
-    fi
-
-
     echo "Selected initial file: $INITIAL_PATH"
     echo "Output label: $OUTPUT_LABEL"
     echo "Config file: $CONFIG_PATH"
@@ -186,9 +170,19 @@ PY
 
     cp -a "$EVENT_SOURCE_DIR"/. "$STAGED_DIR"/
 
-    MUSIC_OUTPUT="{music_output}"
+    PREEQ_OUTPUT="{PREEQ_OUTPUT}"
+    MUSIC_OUTPUT="{MUSIC_OUTPUT}"
     if [[ -f "$MUSIC_OUTPUT" ]]; then
       rm -f "$MUSIC_OUTPUT"
+    fi
+    if [[ -f "$PREEQ_OUTPUT" ]]; then
+      rm -f "$PREEQ_OUTPUT"
+    fi
+    if [[ -f "{PREEQ_RENAMED}" ]]; then
+      rm -f "{PREEQ_RENAMED}"
+    fi
+    if [[ -f "{MUSIC_RENAMED}" ]]; then
+      rm -f "{MUSIC_RENAMED}"
     fi
 
     JOB_START_FMT=$(date +"%F %T")
@@ -219,6 +213,14 @@ PY
       exit $RUN_STATUS
     fi
 
+    if [[ -f "$PREEQ_OUTPUT" ]]; then
+      echo "Found $PREEQ_OUTPUT after runJetscape"
+    else
+      echo "ERROR: Expected $PREEQ_OUTPUT was not produced." >&2
+      rm -rf "$TEMP_ROOT"
+      exit 1
+    fi
+
     if [[ -f "$MUSIC_OUTPUT" ]]; then
       echo "Found $MUSIC_OUTPUT after runJetscape"
     else
@@ -229,27 +231,13 @@ PY
 
     OUTPUT_DIR="out/$OUTPUT_LABEL"
     mkdir -p "$OUTPUT_DIR"
-    mv -f "$MUSIC_OUTPUT" "$OUTPUT_DIR/$MUSIC_OUTPUT"
-    cp -f "$OUTPUT_DIR/$MUSIC_OUTPUT" "$MUSIC_OUTPUT"
-    echo "Stored $OUTPUT_DIR/$MUSIC_OUTPUT"
+    mv -f "$PREEQ_OUTPUT" "$OUTPUT_DIR/{PREEQ_RENAMED}"
+    cp -f "$OUTPUT_DIR/{PREEQ_RENAMED}" "{PREEQ_RENAMED}"
+    echo "Stored $OUTPUT_DIR/{PREEQ_RENAMED}"
 
-    if [[ -x ./convert_to_h5 ]]; then
-      echo "Running convert_to_h5 with $MUSIC_INPUT_PATH ..."
-      if ./convert_to_h5 "$MUSIC_INPUT_PATH"; then
-        if [[ -f JetData.h5 ]]; then
-          mv -f JetData.h5 "$OUTPUT_DIR/JetData.h5"
-          cp -f "$OUTPUT_DIR/JetData.h5" JetData.h5
-          echo "Stored $OUTPUT_DIR/JetData.h5"
-        else
-          echo "WARNING: convert_to_h5 completed but JetData.h5 not found." >&2
-        fi
-      else
-        status=$?
-        echo "WARNING: convert_to_h5 exited with status $status." >&2
-      fi
-    else
-      echo "WARNING: convert_to_h5 not available; skipping HDF5 conversion." >&2
-    fi
+    mv -f "$MUSIC_OUTPUT" "$OUTPUT_DIR/{MUSIC_RENAMED}"
+    cp -f "$OUTPUT_DIR/{MUSIC_RENAMED}" "{MUSIC_RENAMED}"
+    echo "Stored $OUTPUT_DIR/{MUSIC_RENAMED}"
 
     if [[ -n "$JOB_START_EPOCH" ]]; then
       JOB_END_FMT=$(date +"%F %T")
@@ -323,32 +311,37 @@ def build_output_dir_names(config_rel_paths: list[str]) -> list[str]:
 
 def write_condor_submit(
     submit_path: Path,
-    work_dir: str,
+    work_dir_label: str,
+    work_dir_path: Path,
     output_dir: str,
     initial_index: int,
     submit_epoch: int,
-    main_dir: str,
 ) -> None:
+    work_dir_posix = work_dir_path.as_posix()
+    if not SHARED_HYDRO_DIR.exists():
+        raise FileNotFoundError(f"hydro_files_OO directory not found at {SHARED_HYDRO_DIR}")
+    hydro_source_env = SHARED_HYDRO_DIR.as_posix()
     submit_path.write_text(
         f"""Universe                = vanilla
-Executable              = {work_dir}/macro/run.sh
+Executable              = {work_dir_posix}/macro/run.sh
 Accounting_Group        = group_alice
-JobBatchName            = {work_dir}_{output_dir}
-Log                     = {work_dir}/logs/{output_dir}_$(InitialIndex).log
-Output                  = {work_dir}/{output_dir}_$(InitialIndex).out
-Error                   = {work_dir}/{output_dir}_$(InitialIndex).error
+JobBatchName            = {work_dir_label}_{output_dir}
+Log                     = {work_dir_posix}/logs/{output_dir}_$(InitialIndex).log
+Output                  = {work_dir_posix}/{output_dir}_$(InitialIndex).out
+Error                   = {work_dir_posix}/{output_dir}_$(InitialIndex).error
 request_cpus            = 1
 request_memory          = 16GB
-request_disk            = 500MB
+request_disk            = 4GB
 # Transfer all required executables and scripts
-transfer_input_files    = freestream_input,convert_to_h5,Pythia8,lib_hdf5,lib_boost,lib,src,{wantDir},{HYDRO_CONFIG_DIR},nanoDict_rdict.pcm,jcorranDict_rdict.pcm,alienv_envset.sh,runJetscape,jetscape_main.xml,EOS,LBT-tables,run.sh
-# Transfer MUSIC evolution output
-transfer_output_files   = evolution_all_xyeta_MUSIC.dat,JetData.h5
-transfer_output_remaps  = "evolution_all_xyeta_MUSIC.dat={work_dir}/out/$(ConfigDir)/evolution_all_xyeta_MUSIC.dat;JetData.h5={work_dir}/out/$(ConfigDir)/JetData.h5"
+transfer_input_files    = Pythia8,{HYDRO_CONFIG_DIR},nanoDict_rdict.pcm,jcorranDict_rdict.pcm,alienv_envset.sh,runJetscape,jetscape_main.xml,EOS,LBT-tables,run.sh
+# Transfer PreEq + MUSIC evolution output
+transfer_output_files   = {PREEQ_RENAMED},{MUSIC_RENAMED}
+transfer_output_remaps  = "{PREEQ_RENAMED}={work_dir_posix}/out/$(ConfigDir)/{PREEQ_RENAMED};{MUSIC_RENAMED}={work_dir_posix}/out/$(ConfigDir)/{MUSIC_RENAMED}"
 Opt                     = {MAINGENERATOR}
 ConfigDir               = {output_dir}
 InitialIndex            = {initial_index}
 SubmitEpoch             = {submit_epoch}
+environment            = "HYDRO_SOURCE_DIR={hydro_source_env}"
 arguments               = "$(Opt) $(InitialIndex) $(SubmitEpoch)"
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
@@ -370,6 +363,26 @@ def gather_initial_files(base_path: Path) -> List[Path]:
     if not files:
         raise FileNotFoundError(f"No initial.hdf5 files found under {hydro_root}")
     return files
+
+
+def ensure_hydro_symlink(base_path: Path) -> None:
+    """Ensure hydro_files_OO points at the shared hydro directory."""
+    if not SHARED_HYDRO_DIR.exists():
+        raise FileNotFoundError(f"hydro_files_OO directory not found at {SHARED_HYDRO_DIR}")
+
+    link_path = base_path / wantDir
+    if link_path.exists():
+        if link_path.is_symlink():
+            if link_path.resolve() != SHARED_HYDRO_DIR.resolve():
+                link_path.unlink()
+            else:
+                return
+        else:
+            raise RuntimeError(
+                f"{link_path} exists locally and is not a symlink. Remove it so the shared directory can be linked."
+            )
+
+    link_path.symlink_to(SHARED_HYDRO_DIR)
 
 
 def config_path_for_centrality(base_path: Path, cent_name: str) -> Path:
@@ -398,10 +411,11 @@ def stage_event_directory(temp_root: Path, source_event_dir: Path) -> Path:
 
 
 def ensure_music_output_absent(base_path: Path) -> None:
-    """Remove any leftover MUSIC output file before starting the next run."""
-    target = base_path / MUSIC_OUTPUT
-    if target.exists():
-        target.unlink()
+    """Remove any leftover PreEq/MUSIC output files before starting the next run."""
+    for name in (PREEQ_OUTPUT, MUSIC_OUTPUT, PREEQ_RENAMED, MUSIC_RENAMED):
+        target = base_path / name
+        if target.exists():
+            target.unlink()
 
 
 def run_jetscape_local(base_path: Path, config_path: Path) -> None:
@@ -409,18 +423,27 @@ def run_jetscape_local(base_path: Path, config_path: Path) -> None:
     subprocess.run([RUN_EXECUTABLE, str(config_path)], cwd=base_path, check=True)
 
 
-def store_music_output(base_path: Path, destination_dir: Path) -> Path:
-    """Move the produced MUSIC evolution file into the run-specific output directory."""
-    source = base_path / MUSIC_OUTPUT
-    if not source.exists():
+def store_music_output(base_path: Path, destination_dir: Path) -> tuple[Path, Path]:
+    """Move the produced PreEq/MUSIC evolution files into the run-specific output directory."""
+    preeq_source = base_path / PREEQ_OUTPUT
+    music_source = base_path / MUSIC_OUTPUT
+    if not preeq_source.exists():
+        raise FileNotFoundError("runJetscape did not produce evolution_all_xyeta_fs.dat")
+    if not music_source.exists():
         raise FileNotFoundError("runJetscape did not produce evolution_all_xyeta_MUSIC.dat")
 
     destination_dir.mkdir(parents=True, exist_ok=True)
-    destination = destination_dir / MUSIC_OUTPUT
-    if destination.exists():
-        destination.unlink()
-    shutil.move(str(source), str(destination))
-    return destination
+    preeq_dest = destination_dir / PREEQ_RENAMED
+    music_dest = destination_dir / MUSIC_RENAMED
+    if preeq_dest.exists():
+        preeq_dest.unlink()
+    if music_dest.exists():
+        music_dest.unlink()
+    shutil.move(str(preeq_source), str(preeq_dest))
+    shutil.move(str(music_source), str(music_dest))
+    shutil.copy2(str(preeq_dest), str(base_path / PREEQ_RENAMED))
+    shutil.copy2(str(music_dest), str(base_path / MUSIC_RENAMED))
+    return preeq_dest, music_dest
 
 
 def build_local_output_dir_name(cent_name: str, event_name: str) -> str:
@@ -455,8 +478,9 @@ def run_local_mode(main_path: Path) -> None:
             stage_event_directory(temp_root, event_dir)
             ensure_music_output_absent(main_path)
             run_jetscape_local(main_path, config_rel)
-            stored_path = store_music_output(main_path, destination_dir)
-            print(f"    Stored {stored_path.relative_to(main_path)}")
+            preeq_path, music_path = store_music_output(main_path, destination_dir)
+            print(f"    Stored {preeq_path.relative_to(main_path)}")
+            print(f"    Stored {music_path.relative_to(main_path)}")
         except subprocess.CalledProcessError as exc:
             print(f"    ERROR: runJetscape exited with status {exc.returncode}")
             raise
@@ -470,6 +494,8 @@ def run_local_mode(main_path: Path) -> None:
 
 def run_condor_mode(main_path: Path) -> None:
     main_dir = str(main_path)
+    results_root = RESULTS_BASE
+    results_root.mkdir(parents=True, exist_ok=True)
 
     initial_files = gather_initial_files(main_path)
     total_jobs = len(initial_files)
@@ -488,7 +514,7 @@ def run_condor_mode(main_path: Path) -> None:
 
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     work_dir = f"{now}_{MAINGENERATOR}"
-    work_dir_path = pathlib.Path(main_dir) / work_dir
+    work_dir_path = results_root / work_dir
 
     for sub in ["macro", "out", "logs"]:
         (work_dir_path / sub).mkdir(parents=True, exist_ok=True)
@@ -505,10 +531,10 @@ def run_condor_mode(main_path: Path) -> None:
         write_condor_submit(
             submit_path,
             work_dir,
+            work_dir_path,
             out_dir,
             job_index,
             submit_epoch,
-            main_dir,
         )
         submit_paths.append(submit_path)
 
@@ -516,7 +542,7 @@ def run_condor_mode(main_path: Path) -> None:
 
     for idx, submit_path in enumerate(submit_paths, start=1):
         print(f"Submitting job {idx}/{total_jobs}")
-        submit_rel = submit_path.relative_to(main_path_abs).as_posix()
+        submit_rel = submit_path.as_posix()
         proc = subprocess.Popen(
             ['condor_submit', submit_rel],
             stdout=subprocess.PIPE,
@@ -543,6 +569,8 @@ def main() -> None:
     args = parser.parse_args()
 
     main_path = pathlib.Path(os.path.realpath(__file__)).parent
+
+    ensure_hydro_symlink(main_path)
 
     if args.local:
         run_local_mode(main_path)

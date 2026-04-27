@@ -1,0 +1,1077 @@
+{
+  "jetPtCuts": {
+    "hJetCount": [120, "jetMaxPt"],
+    "hJetShape": [120, "jetMaxPt"],
+    "hJetShapeProfile": [120, "jetMaxPt"],
+    "hJetShapeTotalparticlePt": [120, "jetMaxPt"]
+  },
+  "leadingHadronPtCuts": [
+    1,
+    3,
+    5,
+    8,
+    12,
+    15,
+    20,
+    25,
+    30
+  ],
+  "jetShapeParticlePtCuts": [
+    0.7,
+    200
+  ],
+  "jetPtHatOutlierFactor": 4.0,
+  "leadingHadronPtHatOutlierFactor": 1.0,
+  "experiments": [
+    {
+      "name": "ALICE",
+      "leadingHadronPtCuts": [
+        1,
+        3,
+        5,
+        8,
+        12,
+        15,
+        20,
+        25,
+        30
+      ],
+      "jetCutSets": {
+        "default": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -0.5,
+          "particleEtaMax": 0.5,
+          "particlePtMin": 0.15,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -0.5,
+          "jetEtaMax": 0.5
+        },
+        "shapeAcceptance": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -0.3,
+          "particleEtaMax": 0.3,
+          "particlePtMin": 1.0,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -0.3,
+          "jetEtaMax": 0.3
+        }
+      },
+      "hadronCutSets": {
+        "default": {
+          "particleEtaMin": -0.9,
+          "particleEtaMax": 0.9,
+          "particlePtMin": 0.0,
+          "particlePtMax": 1000000000.0
+        }
+      },
+      "histCutMap": {
+        "hJetShape": "shapeAcceptance",
+        "hJetShapeProfile": "shapeAcceptance",
+        "hJetShapeTotalparticlePt": "shapeAcceptance"
+      },
+      "binning": {
+        "hJetPt": {
+          "bins": 200,
+          "min": 0,
+          "max": 200
+        },
+        "hTrackPt": {
+          "bins": 50,
+          "min": 0,
+          "max": 50
+        },
+        "hMultiplicity": {
+          "bins": 400,
+          "min": 0,
+          "max": 4000
+        },
+        "hTrackEta": {
+          "bins": 100,
+          "min": -1.0,
+          "max": 1.0
+        },
+        "hTrackPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetEta": {
+          "bins": 100,
+          "min": -1.0,
+          "max": 1.0
+        },
+        "hJetPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetMass": {
+          "bins": 100,
+          "min": 0,
+          "max": 50
+        },
+        "hJetArea": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetMultiplicity": {
+          "bins": 50,
+          "min": 0,
+          "max": 50
+        },
+        "hJetDeltaPt": {
+          "bins": 200,
+          "min": -100,
+          "max": 100
+        },
+        "hJetDeltaPtVsPt_x": {
+          "bins": 200,
+          "min": 0,
+          "max": 200
+        },
+        "hJetDeltaPtVsPt_y": {
+          "bins": 200,
+          "min": -100,
+          "max": 100
+        },
+        "hJetPtSubhole": {
+          "bins": 200,
+          "min": 0,
+          "max": 200
+        },
+        "hJetShape": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeProfile": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeTotalparticlePt": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hFragmentation": {
+          "bins": 100,
+          "min": 0,
+          "max": 50
+        },
+        "hFragmentationZ": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hFragmentationjt": {
+          "bins": 100,
+          "min": 0,
+          "max": 10
+        },
+        "hJetCount": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hEEC": {
+          "bins": 50,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECSubjet": {
+          "bins": 50,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECvsR": {
+          "bins": 50,
+          "min": 0,
+          "max": 0.6
+        }
+      }
+    },
+    {
+      "name": "chargedALICE",
+      "leadingHadronPtCuts": [
+        1,
+        3,
+        5,
+        8,
+        12,
+        15,
+        20,
+        25,
+        30
+      ],
+      "useChargedParticles": true,
+      "jetCutSets": {
+        "default": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -0.5,
+          "particleEtaMax": 0.5,
+          "particlePtMin": 0.15,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -0.5,
+          "jetEtaMax": 0.5
+        },
+        "shapeAcceptance": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -0.3,
+          "particleEtaMax": 0.3,
+          "particlePtMin": 1.0,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -0.3,
+          "jetEtaMax": 0.3
+        }
+      },
+      "hadronCutSets": {
+        "default": {
+          "particleEtaMin": -0.8,
+          "particleEtaMax": 0.8,
+          "particlePtMin": 0.15,
+          "particlePtMax": 1000000000.0
+        }
+      },
+      "histCutMap": {
+        "hJetShape": "shapeAcceptance",
+        "hJetShapeProfile": "shapeAcceptance",
+        "hJetShapeTotalparticlePt": "shapeAcceptance"
+      },
+      "binning": {
+        "hJetPt": {
+          "bins": 200,
+          "min": 0,
+          "max": 200
+        },
+        "hTrackPt": {
+          "bins": 50,
+          "min": 0,
+          "max": 50
+        },
+        "hMultiplicity": {
+          "bins": 420,
+          "min": 0,
+          "max": 4200
+        },
+        "hTrackEta": {
+          "bins": 100,
+          "min": -1.0,
+          "max": 1.0
+        },
+        "hTrackPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetEta": {
+          "bins": 100,
+          "min": -1.0,
+          "max": 1.0
+        },
+        "hJetPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetMass": {
+          "bins": 100,
+          "min": 0,
+          "max": 50
+        },
+        "hJetArea": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetMultiplicity": {
+          "bins": 50,
+          "min": 0,
+          "max": 50
+        },
+        "hJetDeltaPt": {
+          "bins": 200,
+          "min": -100,
+          "max": 100
+        },
+        "hJetDeltaPtVsPt_x": {
+          "bins": 200,
+          "min": 0,
+          "max": 200
+        },
+        "hJetDeltaPtVsPt_y": {
+          "bins": 200,
+          "min": -100,
+          "max": 100
+        },
+        "hJetPtSubhole": {
+          "bins": 200,
+          "min": 0,
+          "max": 200
+        },
+        "hJetShape": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeProfile": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeTotalparticlePt": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hFragmentation": {
+          "bins": 100,
+          "min": 0,
+          "max": 50
+        },
+        "hFragmentationZ": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hFragmentationjt": {
+          "bins": 100,
+          "min": 0,
+          "max": 10
+        },
+        "hJetCount": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hEEC": {
+          "bins": 50,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECSubjet": {
+          "bins": 50,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECvsR": {
+          "bins": 50,
+          "min": 0,
+          "max": 0.6
+        }
+      }
+    },
+    {
+      "name": "ATLAS",
+      "leadingHadronPtCuts": [
+        1,
+        3,
+        5,
+        8,
+        12,
+        15,
+        20,
+        25,
+        30
+      ],
+      "jetCutSets": {
+        "default": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 500.0,
+          "particleEtaMin": -2.5,
+          "particleEtaMax": 2.5,
+          "particlePtMin": 0.1,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -2.1,
+          "jetEtaMax": 2.1
+        },
+        "shapeAcceptance": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -2.0,
+          "particleEtaMax": 2.0,
+          "particlePtMin": 5.0,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -2.0,
+          "jetEtaMax": 2.0
+        }
+      },
+      "hadronCutSets": {
+        "default": {
+          "particleEtaMin": -3.2,
+          "particleEtaMax": 3.2,
+          "particlePtMin": 0.0,
+          "particlePtMax": 1000000000.0
+        }
+      },
+      "histCutMap": {
+        "hJetShape": "shapeAcceptance",
+        "hJetShapeProfile": "shapeAcceptance",
+        "hJetShapeTotalparticlePt": "shapeAcceptance"
+      },
+      "binning": {
+        "hJetPt": {
+          "bins": 500,
+          "min": 0,
+          "max": 500
+        },
+        "hTrackPt": {
+          "bins": 150,
+          "min": 0,
+          "max": 150
+        },
+        "hMultiplicity": {
+          "bins": 500,
+          "min": 0,
+          "max": 8000
+        },
+        "hTrackEta": {
+          "bins": 100,
+          "min": -2.5,
+          "max": 2.5
+        },
+        "hTrackPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetEta": {
+          "bins": 100,
+          "min": -3.0,
+          "max": 3.0
+        },
+        "hJetPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetMass": {
+          "bins": 150,
+          "min": 0,
+          "max": 80
+        },
+        "hJetArea": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetMultiplicity": {
+          "bins": 80,
+          "min": 0,
+          "max": 80
+        },
+        "hJetDeltaPt": {
+          "bins": 260,
+          "min": -130,
+          "max": 130
+        },
+        "hJetDeltaPtVsPt_x": {
+          "bins": 250,
+          "min": 0,
+          "max": 400
+        },
+        "hJetDeltaPtVsPt_y": {
+          "bins": 260,
+          "min": -130,
+          "max": 130
+        },
+        "hJetPtSubhole": {
+          "bins": 500,
+          "min": 0,
+          "max": 500
+        },
+        "hJetShape": {
+          "bins": 30,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeProfile": {
+          "bins": 30,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeTotalparticlePt": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hFragmentation": {
+          "bins": 150,
+          "min": 0,
+          "max": 80
+        },
+        "hFragmentationZ": {
+          "bins": 150,
+          "min": 0,
+          "max": 1.0
+        },
+        "hFragmentationjt": {
+          "bins": 150,
+          "min": 0,
+          "max": 15
+        },
+        "hJetCount": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hEEC": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECSubjet": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECvsR": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        }
+      }
+    },
+    {
+      "name": "chargedATLAS",
+      "leadingHadronPtCuts": [
+        1,
+        3,
+        5,
+        8,
+        12,
+        15,
+        20,
+        25,
+        30
+      ],
+      "useChargedParticles": true,
+      "jetCutSets": {
+        "default": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -2.8,
+          "particleEtaMax": 2.8,
+          "particlePtMin": 4.0,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -2.8,
+          "jetEtaMax": 2.8
+        },
+        "shapeAcceptance": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -2.0,
+          "particleEtaMax": 2.0,
+          "particlePtMin": 5.0,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -2.0,
+          "jetEtaMax": 2.0
+        }
+      },
+      "hadronCutSets": {
+        "default": {
+          "particleEtaMin": -2.0,
+          "particleEtaMax": 2.0,
+          "particlePtMin": 0.5,
+          "particlePtMax": 1000000000.0
+        }
+      },
+      "histCutMap": {
+        "hJetShape": "shapeAcceptance",
+        "hJetShapeProfile": "shapeAcceptance",
+        "hJetShapeTotalparticlePt": "shapeAcceptance"
+      },
+      "binning": {
+        "hJetPt": {
+          "bins": 1000,
+          "min": 0,
+          "max": 1000
+        },
+        "hTrackPt": {
+          "bins": 150,
+          "min": 0,
+          "max": 150
+        },
+        "hMultiplicity": {
+          "bins": 500,
+          "min": 0,
+          "max": 8000
+        },
+        "hTrackEta": {
+          "bins": 100,
+          "min": -2.5,
+          "max": 2.5
+        },
+        "hTrackPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetEta": {
+          "bins": 100,
+          "min": -3.0,
+          "max": 3.0
+        },
+        "hJetPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetMass": {
+          "bins": 150,
+          "min": 0,
+          "max": 80
+        },
+        "hJetArea": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetMultiplicity": {
+          "bins": 80,
+          "min": 0,
+          "max": 80
+        },
+        "hJetDeltaPt": {
+          "bins": 260,
+          "min": -130,
+          "max": 130
+        },
+        "hJetDeltaPtVsPt_x": {
+          "bins": 250,
+          "min": 0,
+          "max": 400
+        },
+        "hJetDeltaPtVsPt_y": {
+          "bins": 260,
+          "min": -130,
+          "max": 130
+        },
+        "hJetPtSubhole": {
+          "bins": 1000,
+          "min": 0,
+          "max": 1000
+        },
+        "hJetShape": {
+          "bins": 30,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeProfile": {
+          "bins": 30,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeTotalparticlePt": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hFragmentation": {
+          "bins": 150,
+          "min": 0,
+          "max": 80
+        },
+        "hFragmentationZ": {
+          "bins": 150,
+          "min": 0,
+          "max": 1.0
+        },
+        "hFragmentationjt": {
+          "bins": 150,
+          "min": 0,
+          "max": 15
+        },
+        "hJetCount": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hEEC": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECSubjet": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECvsR": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        }
+      }
+    },
+    {
+      "name": "CMS",
+      "leadingHadronPtCuts": [
+        1,
+        3,
+        5,
+        8,
+        12,
+        15,
+        20,
+        25,
+        30
+      ],
+      "jetShapeParticlePtCuts": [
+        0.7,
+        300
+      ],
+      "jetCutSets": {
+        "default": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 300.0,
+          "particleEtaMin": -2.4,
+          "particleEtaMax": 2.4,
+          "particlePtMin": 0.15,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -2.0,
+          "jetEtaMax": 2.0
+        },
+        "shapeAcceptance": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -2.4,
+          "particleEtaMax": 2.4,
+          "particlePtMin": 0.1,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -1.6,
+          "jetEtaMax": 1.6
+        }
+      },
+      "hadronCutSets": {
+        "default": {
+          "particleEtaMin": -2.4,
+          "particleEtaMax": 2.4,
+          "particlePtMin": 0.0,
+          "particlePtMax": 1000000000.0
+        }
+      },
+      "histCutMap": {
+        "hJetShape": "shapeAcceptance",
+        "hJetShapeProfile": "shapeAcceptance",
+        "hJetShapeTotalparticlePt": "shapeAcceptance"
+      },
+      "binning": {
+        "hJetPt": {
+          "bins": 300,
+          "min": 0,
+          "max": 300
+        },
+        "hTrackPt": {
+          "bins": 400,
+          "min": 0,
+          "max": 400
+        },
+        "hMultiplicity": {
+          "bins": 600,
+          "min": 0,
+          "max": 6000
+        },
+        "hTrackEta": {
+          "bins": 100,
+          "min": -2.5,
+          "max": 2.5
+        },
+        "hTrackPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetEta": {
+          "bins": 100,
+          "min": -2.0,
+          "max": 2.0
+        },
+        "hJetPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetMass": {
+          "bins": 120,
+          "min": 0,
+          "max": 60
+        },
+        "hJetArea": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetMultiplicity": {
+          "bins": 60,
+          "min": 0,
+          "max": 60
+        },
+        "hJetDeltaPt": {
+          "bins": 240,
+          "min": -120,
+          "max": 120
+        },
+        "hJetDeltaPtVsPt_x": {
+          "bins": 220,
+          "min": 0,
+          "max": 300
+        },
+        "hJetDeltaPtVsPt_y": {
+          "bins": 240,
+          "min": -120,
+          "max": 120
+        },
+        "hJetPtSubhole": {
+          "bins": 300,
+          "min": 0,
+          "max": 300
+        },
+        "hJetShape": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeProfile": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeTotalparticlePt": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hFragmentation": {
+          "bins": 120,
+          "min": 0,
+          "max": 60
+        },
+        "hFragmentationZ": {
+          "bins": 120,
+          "min": 0,
+          "max": 1.0
+        },
+        "hFragmentationjt": {
+          "bins": 120,
+          "min": 0,
+          "max": 12
+        },
+        "hJetCount": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hEEC": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECSubjet": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECvsR": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        }
+      }
+    },
+    {
+      "name": "chargedCMS",
+      "leadingHadronPtCuts": [
+        1,
+        3,
+        5,
+        8,
+        12,
+        15,
+        20,
+        25,
+        30
+      ],
+      "jetShapeParticlePtCuts": [
+        0.7,
+        300
+      ],
+      "useChargedParticles": true,
+      "jetCutSets": {
+        "default": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -2.0,
+          "particleEtaMax": 2.0,
+          "particlePtMin": 0.3,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -2.0,
+          "jetEtaMax": 2.0
+        },
+        "shapeAcceptance": {
+          "radius": 0.4,
+          "jetPtMin": 5.0,
+          "jetPtMax": 1000.0,
+          "particleEtaMin": -2.4,
+          "particleEtaMax": 2.4,
+          "particlePtMin": 0.1,
+          "particlePtMax": 1000000000.0,
+          "jetEtaMin": -1.6,
+          "jetEtaMax": 1.6
+        }
+      },
+      "hadronCutSets": {
+        "default": {
+          "particleEtaMin": -1.0,
+          "particleEtaMax": 1.0,
+          "particlePtMin": 0.1,
+          "particlePtMax": 1000000000.0
+        }
+      },
+      "histCutMap": {
+        "hJetShape": "shapeAcceptance",
+        "hJetShapeProfile": "shapeAcceptance",
+        "hJetShapeTotalparticlePt": "shapeAcceptance",
+        "hJetCount": "shapeAcceptance"
+      },
+      "binning": {
+        "hJetPt": {
+          "bins": 1000,
+          "min": 0,
+          "max": 1000
+        },
+        "hTrackPt": {
+          "bins": 150,
+          "min": 0,
+          "max": 150
+        },
+        "hMultiplicity": {
+          "bins": 600,
+          "min": 0,
+          "max": 6000
+        },
+        "hTrackEta": {
+          "bins": 100,
+          "min": -2.5,
+          "max": 2.5
+        },
+        "hTrackPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetEta": {
+          "bins": 100,
+          "min": -2.0,
+          "max": 2.0
+        },
+        "hJetPhi": {
+          "bins": 100,
+          "min": 0,
+          "max": 6.28318
+        },
+        "hJetMass": {
+          "bins": 120,
+          "min": 0,
+          "max": 60
+        },
+        "hJetArea": {
+          "bins": 100,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetMultiplicity": {
+          "bins": 60,
+          "min": 0,
+          "max": 60
+        },
+        "hJetDeltaPt": {
+          "bins": 240,
+          "min": -120,
+          "max": 120
+        },
+        "hJetDeltaPtVsPt_x": {
+          "bins": 220,
+          "min": 0,
+          "max": 300
+        },
+        "hJetDeltaPtVsPt_y": {
+          "bins": 240,
+          "min": -120,
+          "max": 120
+        },
+        "hJetPtSubhole": {
+          "bins": 900,
+          "min": 0,
+          "max": 900
+        },
+        "hJetShape": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeProfile": {
+          "bins": 20,
+          "min": 0,
+          "max": 1.0
+        },
+        "hJetShapeTotalparticlePt": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hFragmentation": {
+          "bins": 120,
+          "min": 0,
+          "max": 60
+        },
+        "hFragmentationZ": {
+          "bins": 120,
+          "min": 0,
+          "max": 1.0
+        },
+        "hFragmentationjt": {
+          "bins": 120,
+          "min": 0,
+          "max": 12
+        },
+        "hJetCount": {
+          "bins": 1,
+          "min": 0,
+          "max": 1
+        },
+        "hEEC": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECSubjet": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        },
+        "hEECvsR": {
+          "bins": 60,
+          "min": 0,
+          "max": 0.6
+        }
+      }
+    }
+  ]
+}

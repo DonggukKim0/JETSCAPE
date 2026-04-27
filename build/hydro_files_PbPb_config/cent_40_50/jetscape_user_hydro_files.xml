@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='utf-8'?>
+<jetscape>
+    <vlevel> 0 </vlevel>
+    <nEvents> 1 </nEvents>
+    <setReuseHydro> true </setReuseHydro>
+    <nReuseHydro> 1 </nReuseHydro>
+    <Random>
+        <seed>123</seed>
+    </Random>
+    <outputFilename>test_out</outputFilename>
+    <JetScapeWriterFinalStateHadronsAscii> on </JetScapeWriterFinalStateHadronsAscii>
+    <IS>
+        <initial_profile_path>./temp</initial_profile_path>
+    </IS>
+    <Hard>
+        <PythiaGun>
+            <FSR_on>0</FSR_on>
+            <pTHatMin>5</pTHatMin>
+            <pTHatMax>10</pTHatMax>
+            <eCM>5020</eCM>
+        </PythiaGun>
+    </Hard>
+
+    <Preequilibrium>
+        <tau0>0.0</tau0>
+        <tauj>0.1</tauj>
+        <taus>0.71</taus>
+        <evolutionInMemory>0</evolutionInMemory>
+        <FreestreamMilne>
+            <name>FreestreamMilne</name>
+            <freestream_input_file>hydro_files_PbPb_config/cent_40_50/freestream_input</freestream_input_file>
+            <ntau>50</ntau>
+            <E_DEP_FS>0</E_DEP_FS>
+            <E_R>4.0</E_R>
+            <TAU_R>1.46</TAU_R>
+            <ALPHA>0.031</ALPHA>
+        </FreestreamMilne>
+    </Preequilibrium>
+
+    <Hydro>
+        <MUSIC>
+            <beastMode>0</beastMode>
+            <MUSIC_input_file>hydro_files_PbPb_config/cent_40_50/music_input</MUSIC_input_file>
+            <output_evolution_to_file>1</output_evolution_to_file>
+            <output_evolution_to_memory>1</output_evolution_to_memory>
+            <surface_in_memory>1</surface_in_memory>
+            <Initial_time_tau_0>0.71</Initial_time_tau_0>
+            <T_dependent_Shear_to_S_ratio>2</T_dependent_Shear_to_S_ratio>
+            <shear_viscosity_2_min>0.093</shear_viscosity_2_min>
+            <shear_viscosity_2_slope>0.8024</shear_viscosity_2_slope>
+            <shear_viscosity_2_curv>0.1568</shear_viscosity_2_curv>
+            <temperature_dependent_bulk_viscosity>3</temperature_dependent_bulk_viscosity>
+            <zeta_over_s_max>0.01844</zeta_over_s_max>
+            <zeta_over_s_T_peak_in_GeV>0.1889</zeta_over_s_T_peak_in_GeV>
+            <zeta_over_s_width_in_GeV>0.04252</zeta_over_s_width_in_GeV>
+            <zeta_over_s_lambda_asymm>0</zeta_over_s_lambda_asymm>
+            <freezeout_temperature>0.1595</freezeout_temperature>
+            <Perform_CooperFrye_Feezeout>0</Perform_CooperFrye_Feezeout>
+        </MUSIC>
+    </Hydro>
+    <Eloss>
+        <deltaT>0.1</deltaT>
+        <formTime> -0.1 </formTime>
+        <maxT>150</maxT>
+        <tStart> 0.6 </tStart>
+        <mutex>ON</mutex>
+        <Matter>
+            <name>Matter</name>
+            <matter_on> 1 </matter_on>
+            <Q0> 2.0 </Q0>
+            <T0> 0.16 </T0>
+            <vir_factor> 0.25 </vir_factor>
+            <in_vac> 0 </in_vac>
+            <recoil_on> 1 </recoil_on>
+            <broadening_on> 0 </broadening_on>
+            <brick_med> 0 </brick_med>
+            <brick_length> 5.0 </brick_length>
+            <hydro_Tc> 0.16 </hydro_Tc>
+            <QhatParametrizationType> 6 </QhatParametrizationType>
+            <alphas> 0.3 </alphas>
+            <qhatA> 10.0 </qhatA>
+            <qhatB> 100.0 </qhatB>
+            <qhatC> 0.2 </qhatC>
+        </Matter>
+        <Lbt>
+            <name> Lbt </name>
+            <Q0> 2.0 </Q0>
+            <in_vac> 0 </in_vac>
+            <only_leading> 0 </only_leading>
+            <hydro_Tc> 0.16 </hydro_Tc>
+            <alphas> 0.3 </alphas>
+            <run_alphas>1</run_alphas>
+        </Lbt>
+    </Eloss>
+    <JetHadronization>
+        <name>colorless</name>
+        <take_recoil>1</take_recoil>
+        <eCMforHadronization>2510</eCMforHadronization>
+        <LinesToRead>
+            111:mayDecay = off
+        </LinesToRead>
+    </JetHadronization>
+</jetscape>

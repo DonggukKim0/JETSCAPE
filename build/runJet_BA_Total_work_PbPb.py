@@ -498,8 +498,6 @@ def write_condor_submit(
         main_path / "jetscapeToJTree",
         main_path / "JYUAna",
         main_path / "jetscape_main.xml",
-        main_path / "music_input",
-        main_path / "freestream_input",
         main_path / "run.sh",
     ]
     transfer_inputs = ", ".join(path.resolve().as_posix() for path in transfer_sources)

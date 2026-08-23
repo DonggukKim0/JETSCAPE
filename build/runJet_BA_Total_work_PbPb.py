@@ -9,9 +9,9 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_renewal_pTHat_cut_cent_0_5"
-wantDir = "renewal_pTHat_cut_cent_0_5"
-TOTAL_EVENTS = 10
+MAINGENERATOR = "run_PbPb5020_config_xml"
+wantDir = "PbPb5020_config_xml"
+TOTAL_EVENTS = 1000
 RESULTS_BASE = pathlib.Path("/alice/data/dongguk/results_JETSCAPE")
 SHARED_HYDRO_DIR = pathlib.Path("/alice/data/dongguk/hydro_files_PbPb")
 SHARED_LBT_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/LBT-tables")
@@ -537,7 +537,6 @@ environment            = "HYDRO_SOURCE_DIR={hydro_source_env} LBT_SOURCE_DIR={lb
 arguments               = "$(Opt) $(ConfigIndex) $(EventIndex) $(SubmitEpoch)"
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
-periodic_remove         = (CurrentTime - EnteredCurrentStatus) > 604800
 output_destination      = file://{work_dir_posix}/out/$(ConfigDir)/
 Notification            = Never
 

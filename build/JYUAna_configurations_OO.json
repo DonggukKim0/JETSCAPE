@@ -21,7 +21,7 @@
     200
   ],
   "jetPtHatOutlierFactor": 1000.0,
-  "leadingHadronPtHatOutlierFactor": 1000.0,
+  "leadingHadronPtHatOutlierFactor": 1.0,
   "experiments": [
     {
       "name": "ALICE",

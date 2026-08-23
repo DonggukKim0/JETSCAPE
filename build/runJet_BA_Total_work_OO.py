@@ -9,15 +9,16 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_OO5360_config_xml"
+MAINGENERATOR = "run_OO5360_config_xml_nPDF_MAPparameter_10intervalsofpTHat"
 wantDir = "OO5360_config_xml"
-TOTAL_EVENTS = 10
+TOTAL_EVENTS = 100
 RESULTS_BASE = pathlib.Path("/alice/data/dongguk/results_JETSCAPE")
 SHARED_HYDRO_DIR = pathlib.Path("/alice/data/dongguk/hydro_files_OO")
 SHARED_LBT_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/LBT-tables")
 SHARED_EOS_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/EOS")
 SHARED_PYTHIA_DIR = pathlib.Path("/alice/home/dongguk/Github/JETSCAPE/build/Pythia8")
 ACCEPTANCE = "JYUAna_configurations_OO.json"
+EXCLUDED_CONDOR_MACHINES = ("condor-wn2201.sdfarm.kr",)
 
 
 def confirm_setting(label: str, value: object) -> None:
@@ -65,6 +66,8 @@ def print_launch_banner() -> None:
     print(f"EOS: {SHARED_EOS_DIR}")
     print(f"Pythia8: {SHARED_PYTHIA_DIR}")
     print(f"Acceptance: {ACCEPTANCE}")
+    if EXCLUDED_CONDOR_MACHINES:
+        print(f"Excluded Condor machines: {', '.join(EXCLUDED_CONDOR_MACHINES)}")
     print()
 
 
@@ -509,6 +512,12 @@ def write_condor_submit(
     eos_source_env = SHARED_EOS_DIR.as_posix()
     pythia_source_env = SHARED_PYTHIA_DIR.as_posix()
     home_env = os.environ.get("HOME", "/alice/home/dongguk")
+    requirements_line = ""
+    if EXCLUDED_CONDOR_MACHINES:
+        requirements = " && ".join(
+            f'(Machine =!= "{machine}")' for machine in EXCLUDED_CONDOR_MACHINES
+        )
+        requirements_line = f"requirements            = {requirements}\n"
     submit_path.write_text(
         f"""Universe                = vanilla
 Executable              = {work_dir_posix}/macro/run.sh
@@ -520,6 +529,7 @@ Error                   = {work_dir_posix}/{config_dir}_$(EventIndex).error
 request_cpus            = 1
 request_memory          = 6GB
 request_disk            = 2GB
+{requirements_line}\
 # Transfer required executables and lightweight resources
 transfer_input_files    = {transfer_inputs}
 # Transfer .dat, .root (JTree), and final .root
@@ -532,7 +542,7 @@ environment            = "HYDRO_SOURCE_DIR={hydro_source_env} LBT_SOURCE_DIR={lb
 arguments               = "$(Opt) $(ConfigIndex) $(EventIndex) $(SubmitEpoch)"
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
-periodic_remove         = (CurrentTime - EnteredCurrentStatus) > 604800
+periodic_remove = (CurrentTime - EnteredCurrentStatus) > 604800
 output_destination      = file://{work_dir_posix}/out/$(ConfigDir)/
 Notification            = Never
 

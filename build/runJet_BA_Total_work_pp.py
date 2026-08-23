@@ -9,8 +9,8 @@ import xml.etree.ElementTree as ET
 
 os.umask(0)
 
-MAINGENERATOR = "run_project_renewal_pp5020_cent_0_100"
-wantDir = "project_renewal_pp5020_cent_0_100"
+MAINGENERATOR = "run_pp5020_config_xml"
+wantDir = "pp5020_config_xml"
 TOTAL_EVENTS = 1000
 RESULTS_BASE = pathlib.Path("/alice/data/dongguk/results_JETSCAPE")
 SHARED_HYDRO_DIR = None
